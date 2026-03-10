@@ -28,21 +28,22 @@ Latest local `bun run benchmark-check` snapshot on this machine:
 
 | Metric | Value |
 |---|---|
-| `prepare()` | `19.85ms` |
+| `prepare()` | `17.50ms` |
 | `layout()` | `0.10ms` |
-| DOM batch | `4.10ms` |
-| DOM interleaved | `41.45ms` |
+| DOM batch | `3.90ms` |
+| DOM interleaved | `42.55ms` |
 
 ### Long-form corpus stress
 
 | Corpus | prepare() | layout() | segments | lines @ 300px |
 |---|---:|---:|---:|---:|
 | Korean prose | `11.30ms` | `0.05ms` | `9,691` | `428` |
-| Thai prose | `19.10ms` | `0.06ms` | `10,281` | `1,024` |
-| Myanmar prose | `2.30ms` | `<0.01ms` | `797` | `81` |
-| Khmer prose | `13.10ms` | `0.06ms` | `11,109` | `591` |
-| Hindi prose | `14.00ms` | `0.05ms` | `9,958` | `653` |
-| Arabic prose | `94.60ms` | `0.19ms` | `37,603` | `2,643` |
+| Thai prose | `19.60ms` | `0.06ms` | `10,281` | `1,024` |
+| Myanmar prose | `2.10ms` | `<0.01ms` | `797` | `81` |
+| Myanmar prose (story 2) | `1.50ms` | `<0.01ms` | `498` | `54` |
+| Khmer prose | `11.70ms` | `0.06ms` | `11,109` | `591` |
+| Hindi prose | `14.10ms` | `0.05ms` | `9,958` | `653` |
+| Arabic prose | `96.50ms` | `0.19ms` | `37,603` | `2,643` |
 
 Notes:
 - These are current Chrome-side numbers from `bun run benchmark-check`, not the older cross-browser raw snapshot in `pages/benchmark-results.txt`.
