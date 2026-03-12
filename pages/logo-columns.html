@@ -27,6 +27,7 @@
 
       body {
         font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        cursor: default;
       }
 
       .page {
@@ -44,6 +45,8 @@
         position: absolute;
         margin: 0;
         font: inherit;
+        user-select: text;
+        z-index: 1;
       }
 
       .headline-line {
@@ -60,6 +63,8 @@
         text-transform: uppercase;
         white-space: nowrap;
         color: rgba(17, 16, 13, 0.58);
+        user-select: text;
+        z-index: 1;
       }
 
       .logo {
@@ -67,6 +72,8 @@
         display: block;
         user-select: none;
         pointer-events: none;
+        transform-origin: center center;
+        z-index: 3;
       }
 
       .logo--openai {
@@ -83,6 +90,8 @@
         color: var(--ink);
         font-weight: 450;
         letter-spacing: 0.002em;
+        user-select: text;
+        z-index: 1;
       }
     </style>
   </head>
