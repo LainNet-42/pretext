@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lotus Fall</title>
+  <style>
+    *{box-sizing:border-box;margin:0}
+    html,body{height:100%;overflow:hidden;background:#030306}
+    body{display:flex;align-items:center;justify-content:center}
+    #art{text-align:center}
+    .r{display:block;white-space:pre;font:13px/15px "SF Mono","Cascadia Code","Consolas",monospace;height:15px;letter-spacing:0.3px}
+
+    /* --- subtitle text --- */
+    .s1{color:rgba(255,255,255,0.08)}.s2{color:rgba(255,255,255,0.35)}
+    .s3{color:rgba(255,255,255,0.60)}.s4{color:rgba(255,255,255,0.80)}
+    .s5{color:rgba(255,255,255,0.94)}.s6{color:#fff}
+
+    /* --- falling text (stays bright, fades late) --- */
+    .ft1{color:rgba(235,240,250,0.92)}.ft2{color:rgba(215,225,240,0.78)}
+    .ft3{color:rgba(190,205,225,0.60)}.ft4{color:rgba(165,180,205,0.40)}
+    .ft5{color:rgba(140,158,185,0.22)}
+
+    /* --- dissolving text at water impact --- */
+    .ds1{color:rgba(160,210,255,0.80)}.ds2{color:rgba(140,195,245,0.55)}
+    .ds3{color:rgba(120,178,232,0.35)}.ds4{color:rgba(100,160,218,0.18)}
+
+    /* --- splash burst (bright flash on impact) --- */
+    .sp1{color:rgba(200,230,255,0.95)}.sp2{color:rgba(170,210,248,0.72)}
+    .sp3{color:rgba(140,192,238,0.48)}.sp4{color:rgba(115,172,225,0.28)}
+
+    /* --- water surface (much brighter baseline) --- */
+    .w1{color:rgba(70,140,195,0.22)}.w2{color:rgba(80,155,210,0.35)}
+    .w3{color:rgba(90,168,222,0.50)}.w4{color:rgba(100,180,232,0.64)}
+    .w5{color:rgba(110,190,242,0.78)}.w6{color:rgba(120,200,250,0.88)}
+    .w7{color:rgba(140,215,255,0.96)}
+
+    /* --- ripple underwater (boosted) --- */
+    .p1{color:rgba(85,150,208,0.14)}.p2{color:rgba(100,168,222,0.28)}
+    .p3{color:rgba(118,185,238,0.44)}.p4{color:rgba(135,198,248,0.60)}
+    .p5{color:rgba(155,212,255,0.74)}.p6{color:rgba(175,225,255,0.88)}
+
+    /* --- ghost traces (sunken text remnants, more visible) --- */
+    .gh1{color:rgba(100,155,210,0.10)}.gh2{color:rgba(110,168,222,0.20)}
+    .gh3{color:rgba(120,180,235,0.32)}
+
+    /* --- underwater glow (pre-lotus energy, brighter) --- */
+    .gl1{color:rgba(120,210,175,0.12)}.gl2{color:rgba(135,222,188,0.24)}
+    .gl3{color:rgba(150,235,200,0.40)}.gl4{color:rgba(168,248,215,0.58)}
+
+    /* --- stem (vivid green) --- */
+    .g1{color:rgba(50,195,72,0.35)}.g2{color:rgba(58,210,80,0.55)}
+    .g3{color:rgba(65,225,88,0.75)}.g4{color:rgba(72,240,95,0.92)}
+
+    /* --- petal (vivid pink) --- */
+    .f1{color:rgba(235,100,120,0.30)}.f2{color:rgba(242,108,128,0.52)}
+    .f3{color:rgba(248,118,138,0.74)}.f4{color:rgba(252,128,148,0.90)}
+    .f5{color:rgba(255,145,162,0.98)}
+
+    /* --- bud center (warm gold) --- */
+    .bc1{color:rgba(255,215,130,0.55)}.bc2{color:rgba(255,225,155,0.78)}
+    .bc3{color:rgba(255,238,180,0.95)}
+
+    /* --- background noise --- */
+    .n1{color:rgba(255,255,255,0.018)}.n2{color:rgba(255,255,255,0.035)}.n3{color:rgba(255,255,255,0.06)}
+
+    /* --- ambient water particles --- */
+    .am1{color:rgba(80,150,210,0.08)}.am2{color:rgba(90,165,225,0.15)}
+  </style>
+</head>
+<body>
+  <div id="art"></div>
+  <script type="module" src="./lotus-fall.ts"></script>
+</body>
+</html>
