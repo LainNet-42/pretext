@@ -21,6 +21,7 @@ const MIME: Record<string, string> = {
 const routes: Record<string, string> = {
   '/': 'pages/demos/index.html',
   '/demos/index': 'pages/demos/index.html',
+  '/demos/lotus': 'pages/demos/lotus.html',
   '/demos/fluid-ascii': 'pages/demos/fluid-ascii.html',
   '/demos/red-thread': 'pages/demos/red-thread.html',
   '/demos/showcase': 'pages/demos/showcase.html',

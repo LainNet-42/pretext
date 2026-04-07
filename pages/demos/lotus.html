@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lotus</title>
+  <style>
+    *{box-sizing:border-box;margin:0}
+    html,body{height:100%;overflow:hidden;background:#050508}
+    body{display:flex;align-items:center;justify-content:center}
+    #art{text-align:center}
+    .r{display:block;white-space:pre;font:14px/17px "SF Mono","Cascadia Code","Consolas",monospace;height:17px;letter-spacing:0.5px}
+    /* water surface - bright enough to see */
+    .w1{color:rgba(80,140,190,0.20)}.w2{color:rgba(85,150,200,0.35)}
+    .w3{color:rgba(90,160,215,0.50)}.w4{color:rgba(95,170,225,0.65)}
+    .w5{color:rgba(100,180,235,0.78)}.w6{color:rgba(110,190,245,0.90)}
+    /* rain drops */
+    .d1{color:rgba(150,200,240,0.30)}.d2{color:rgba(160,210,250,0.50)}
+    .d3{color:rgba(170,215,255,0.70)}
+    /* ripple */
+    .p1{color:rgba(100,160,210,0.12)}.p2{color:rgba(120,175,225,0.25)}
+    .p3{color:rgba(140,190,235,0.40)}.p4{color:rgba(160,205,245,0.55)}
+    .p5{color:rgba(180,215,250,0.70)}.p6{color:rgba(200,225,255,0.85)}
+    /* stem green */
+    .g1{color:rgba(60,190,80,0.30)}.g2{color:rgba(65,200,85,0.50)}
+    .g3{color:rgba(70,210,90,0.70)}.g4{color:rgba(80,220,95,0.88)}
+    /* petal pink */
+    .f1{color:rgba(230,110,130,0.30)}.f2{color:rgba(235,115,135,0.50)}
+    .f3{color:rgba(240,120,140,0.70)}.f4{color:rgba(245,125,145,0.88)}
+    /* noise */
+    .n1{color:rgba(255,255,255,0.02)}.n2{color:rgba(255,255,255,0.04)}.n3{color:rgba(255,255,255,0.06)}
+    /* kanji */
+    .k1{color:rgba(120,160,200,0.12)}.k2{color:rgba(130,170,210,0.22)}
+    .k3{color:rgba(140,180,220,0.35)}.k4{color:rgba(150,190,230,0.50)}
+  </style>
+</head>
+<body>
+  <div id="art"></div>
+  <script type="module" src="./lotus.ts"></script>
+</body>
+</html>
