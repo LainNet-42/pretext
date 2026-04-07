@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ASCII Growth</title>
+  <style>
+    *{box-sizing:border-box;margin:0}
+    html,body{height:100%;overflow:hidden;background:#06060a}
+    body{display:flex;align-items:center;justify-content:center}
+    #art{text-align:center}
+    .r{display:block;white-space:pre;font:14px/17px "SF Mono","Cascadia Code","Consolas",monospace;height:17px;letter-spacing:0.5px}
+    /* trunk: rich warm bark */
+    .t1{color:rgba(180,130,70,0.12)}.t2{color:rgba(175,125,65,0.25)}
+    .t3{color:rgba(170,115,60,0.42)}.t4{color:rgba(160,105,55,0.58)}
+    .t5{color:rgba(150,100,50,0.74)}.t6{color:rgba(140,90,45,0.90)}
+    /* leaf: lush emerald to lime */
+    .l1{color:rgba(50,210,90,0.10)}.l2{color:rgba(55,200,85,0.22)}
+    .l3{color:rgba(60,195,80,0.38)}.l4{color:rgba(65,190,75,0.52)}
+    .l5{color:rgba(75,205,80,0.68)}.l6{color:rgba(90,220,90,0.85)}
+    /* fruit: vivid coral-red */
+    .f1{color:rgba(255,85,60,0.45)}.f2{color:rgba(255,80,55,0.62)}
+    .f3{color:rgba(255,75,50,0.80)}.f4{color:rgba(255,70,45,0.95)}
+    /* ground: muted earth */
+    .g1{color:rgba(120,95,55,0.08)}.g2{color:rgba(120,95,55,0.16)}
+    /* noise/scatter glyphs */
+    .n1{color:rgba(255,255,255,0.025)}.n2{color:rgba(255,255,255,0.04)}.n3{color:rgba(255,255,255,0.06)}
+  </style>
+</head>
+<body>
+  <div id="art"></div>
+  <script type="module" src="./red-thread.ts"></script>
+</body>
+</html>

@@ -23,5 +23,6 @@
     "allowUnreachableCode": true,
     "noFallthroughCasesInSwitch": true,
     "noPropertyAccessFromIndexSignature": true
-  }
+  },
+  "exclude": ["serve.ts"]
 }

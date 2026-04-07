@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Full-screen fluid smoke simulation rendered as proportional serif ASCII characters. Mouse-interactive with multiple font weights and gold opacity cascade.">
+  <title>Fluid ASCII -- Pretext</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: #050508;
+      color: #ddd8d0;
+      cursor: default;
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #stage {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #ascii-grid {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+    }
+    .art-row {
+      display: block;
+      white-space: pre;
+      font-family: Georgia, Palatino, "Times New Roman", serif;
+      font-size: 14px;
+      line-height: 16px;
+      height: 16px;
+      text-align: center;
+    }
+    /* font weight classes */
+    .w3 { font-weight: 300; }
+    .w5 { font-weight: 500; }
+    .w8 { font-weight: 800; }
+    .it { font-style: italic; }
+    /* 10-level gold opacity cascade */
+    .a1  { color: rgba(196,163,90,0.10); }
+    .a2  { color: rgba(196,163,90,0.20); }
+    .a3  { color: rgba(196,163,90,0.30); }
+    .a4  { color: rgba(196,163,90,0.40); }
+    .a5  { color: rgba(196,163,90,0.50); }
+    .a6  { color: rgba(196,163,90,0.60); }
+    .a7  { color: rgba(196,163,90,0.70); }
+    .a8  { color: rgba(196,163,90,0.80); }
+    .a9  { color: rgba(196,163,90,0.90); }
+    .a10 { color: rgba(196,163,90,1.00); }
+    /* secondary color: cool blue for contrast accents */
+    .b1  { color: rgba(100,140,220,0.10); }
+    .b2  { color: rgba(100,140,220,0.20); }
+    .b3  { color: rgba(100,140,220,0.30); }
+    .b4  { color: rgba(100,140,220,0.40); }
+    .b5  { color: rgba(100,140,220,0.50); }
+    .b6  { color: rgba(100,140,220,0.60); }
+    .b7  { color: rgba(100,140,220,0.70); }
+    .b8  { color: rgba(100,140,220,0.80); }
+    .b9  { color: rgba(100,140,220,0.90); }
+    .b10 { color: rgba(100,140,220,1.00); }
+
+    .hud {
+      position: fixed;
+      bottom: 12px;
+      left: 16px;
+      z-index: 100;
+      font: 400 10px/1.4 "SF Mono", ui-monospace, monospace;
+      color: rgba(255,255,255,0.10);
+      pointer-events: none;
+    }
+    .hint {
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      font: 400 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: rgba(255,255,255,0.12);
+      z-index: 100;
+      pointer-events: none;
+      white-space: nowrap;
+      transition: opacity 3s ease-out;
+    }
+    .back {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 100;
+      font: 400 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: rgba(255,255,255,0.15);
+      text-decoration: none;
+    }
+    .back:hover { color: rgba(255,255,255,0.35); }
+    .title-overlay {
+      position: fixed;
+      bottom: 12px;
+      right: 16px;
+      z-index: 100;
+      font: 300 10px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: rgba(255,255,255,0.08);
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <div id="ascii-grid"></div>
+  </div>
+  <div class="hint" id="hint">Move through the smoke</div>
+  <div class="hud" id="hud"></div>
+  <a class="back" href="/demos/index">&larr; Demos</a>
+  <div class="title-overlay">Fluid ASCII / Pretext</div>
+
+  <script type="module" src="./fluid-ascii.ts"></script>
+</body>
+</html>
