@@ -22,10 +22,11 @@ VOICE_PATH = os.path.join(OUTPUT_DIR, "voice_stitched.wav")
 FRAMES_DIR = os.path.join(OUTPUT_DIR, "frames")
 FINAL_DIR = os.path.join(OUTPUT_DIR, "final")
 
-FPS = 15
-PAGE_URL = "http://127.0.0.1:3000/demos/red-thread"
-WIDTH = 1080
-HEIGHT = 1920  # portrait for social media
+FPS = 60
+PAGE_URL = "http://127.0.0.1:3000/demos/lotus-fall"
+WIDTH = 540
+HEIGHT = 960
+DPR = 2  # deviceScaleFactor: renders at 1080x1920
 
 
 def load_timeline():
@@ -53,7 +54,7 @@ const path = require('path');
     args: ['--no-sandbox', '--disable-gpu', '--font-render-hinting=none'],
   }});
   const page = await browser.newPage();
-  await page.setViewport({{ width: {WIDTH}, height: {HEIGHT}, deviceScaleFactor: 1 }});
+  await page.setViewport({{ width: {WIDTH}, height: {HEIGHT}, deviceScaleFactor: {DPR} }});
   await page.goto('{PAGE_URL}', {{ waitUntil: 'networkidle0', timeout: 30000 }});
 
   // Wait for animation to initialize
@@ -101,7 +102,7 @@ const path = require('path');
 """)
 
     print(f"Capturing {total_frames} frames @ {FPS}fps ({total_ms / 1000:.1f}s)...")
-    result = subprocess.run(["node", capture_js], cwd=ROOT)
+    result = subprocess.run(["node", "--max-old-space-size=4096", capture_js], cwd=ROOT, timeout=600)
     if result.returncode != 0:
         print("Puppeteer capture failed", file=sys.stderr)
         sys.exit(1)
@@ -149,7 +150,8 @@ def encode(total_ms, bgm_path=None, bgm_vol=0.3):
             f"[1:a]volume=1.0[voice];[2:a]volume={bgm_vol}[bgm];"
             f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[aout]",
             "-map", "0:v", "-map", "[aout]",
-            "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
+
+            "-c:v", "libx264", "-preset", "medium", "-crf", "14", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "192k",
             "-t", str(duration),
             "-shortest",
@@ -161,7 +163,8 @@ def encode(total_ms, bgm_path=None, bgm_vol=0.3):
             "-framerate", str(FPS),
             "-i", frame_pattern,
             "-i", VOICE_PATH,
-            "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
+
+            "-c:v", "libx264", "-preset", "medium", "-crf", "14", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "192k",
             "-t", str(duration),
             "-shortest",
@@ -187,7 +190,8 @@ def main():
     args = parser.parse_args()
 
     tl = load_timeline()
-    total_ms = tl["total_ms"]
+    # voice 16.3s + 2s buffer + 2.5s shutdown + 1.5s black = ~22.3s
+    total_ms = 22300
 
     if not args.skip_capture:
         if os.path.exists(FRAMES_DIR):
