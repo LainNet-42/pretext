@@ -262,17 +262,15 @@ function updateLines(s: number): void {
       case LineState.TYPING: {
         const elapsed = s - ln.typeStartT
         ln.typedCount = Math.min(ln.text.length, Math.floor(elapsed * ln.typeSpeed))
-        // CN types slightly behind
+        // CN finishes at same time as JP (same voiceDur, no delay)
         const cnSpeed = ln.cn.length / Math.max(0.1, ln.voiceDur)
-        ln.cnTypedCount = Math.min(ln.cn.length, Math.floor(Math.max(0, elapsed - 0.15) * cnSpeed))
+        ln.cnTypedCount = Math.min(ln.cn.length, Math.floor(elapsed * cnSpeed))
         if (ln.typedCount >= ln.text.length) ln.state = LineState.HOLDING
         break
       }
       case LineState.HOLDING: {
         const typeEnd = ln.typeStartT + ln.voiceDur
-        // keep CN typing if needed
-        const cnSpeed = ln.cn.length / Math.max(0.1, ln.voiceDur)
-        ln.cnTypedCount = Math.min(ln.cn.length, Math.floor(Math.max(0, s - ln.typeStartT - 0.15) * cnSpeed))
+        ln.cnTypedCount = ln.cn.length  // fully typed during hold
         if (s >= typeEnd + ln.holdAfter) {
           ln.state = LineState.FALLING; ln.fallVy = 0.3; ln.y = ln.baseY; ln.lastTrailY = ln.baseY
         }
@@ -331,14 +329,15 @@ function updateLines(s: number): void {
       }
       case LineState.FADEIN: {
         ln.fadeInT = Math.min(1, (s - ln.typeStartT) / 2.0)
-        // CN types along
+        // CN types at same rate as fade
         const cnSpeed = ln.cn.length / Math.max(0.1, ln.voiceDur)
-        ln.cnTypedCount = Math.min(ln.cn.length, Math.floor(Math.max(0, s - ln.typeStartT - 0.15) * cnSpeed))
+        ln.cnTypedCount = Math.min(ln.cn.length, Math.floor((s - ln.typeStartT) * cnSpeed))
         if (ln.fadeInT >= 1) ln.state = LineState.VISIBLE
         break
       }
       case LineState.VISIBLE:
         if (idx === LIGHT_LINE) lightRadiance = 1
+        ln.cnTypedCount = ln.cn.length  // ensure CN fully shown
         break
     }
   }
@@ -513,21 +512,35 @@ function frame(now: number): void {
   // ---- render rows ----
 
   for (let gy = 0; gy < ROWS; gy++) {
-    // TV shutdown: compress rows toward WATER_ROW
+    // TV shutdown: compress rows toward WATER_ROW then collapse
+    if (shutdownT >= 1) { rowEls[gy]!.innerHTML = ''; continue }
+
     let mappedGy = gy
     if (shutdownT > 0) {
       const center = WATER_ROW
-      const squeeze = 1 - shutdownT * 0.95 // at shutdownT=1, squeeze to 5% height
+      // aggressive squeeze: rows compress to center
+      const squeeze = Math.max(0, 1 - shutdownT * shutdownT * 1.2)
       mappedGy = Math.round(center + (gy - center) * squeeze)
-      if (shutdownT > 0.85) {
-        // nearly collapsed: only render the center line
-        if (Math.abs(gy - center) > 1) { rowEls[gy]!.innerHTML = ''; continue }
+
+      if (shutdownT > 0.7) {
+        // nearly collapsed: bright center line
+        if (gy === center) {
+          let line = ''
+          const brightness = 1 - (shutdownT - 0.7) / 0.3 // fade the line itself
+          for (let gx = 0; gx < COLS; gx++) {
+            const edgeFade = 1 - Math.abs(gx - COLS / 2) / (COLS / 2) * (1 - brightness)
+            if (edgeFade > 0.1) line += `<span class="w${Math.max(1, Math.min(7, Math.ceil(edgeFade * brightness * 7)))}">${SURFACE_CHARS[gx % SURFACE_CHARS.length]}</span>`
+            else line += ' '
+          }
+          rowEls[gy]!.innerHTML = line
+          continue
+        }
+        if (Math.abs(gy - center) > Math.max(1, Math.floor((1 - shutdownT) * ROWS * 0.5))) {
+          rowEls[gy]!.innerHTML = ''; continue
+        }
       }
     }
     if (mappedGy < 0 || mappedGy >= ROWS) { rowEls[gy]!.innerHTML = ''; continue }
-
-    // full black after shutdown
-    if (shutdownT >= 1) { rowEls[gy]!.innerHTML = ''; continue }
 
     let html = ''
     for (let gx = 0; gx < COLS; gx++) {
