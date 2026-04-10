@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smoke</title>
+  <style>
+    *{box-sizing:border-box;margin:0}
+    html,body{height:100%;overflow:hidden;background:#050403}
+    body{display:flex;align-items:center;justify-content:center}
+    #art{text-align:center}
+    .r{display:block;white-space:pre;font:16px/19px "SF Mono","Cascadia Code","Consolas",monospace;height:19px;letter-spacing:0.4px}
+
+    /* --- subtitle (bright white, readable) --- */
+    .s1{color:rgba(255,255,255,0.08)}.s2{color:rgba(255,255,255,0.32)}
+    .s3{color:rgba(255,255,255,0.58)}.s4{color:rgba(255,255,255,0.80)}
+    .s5{color:rgba(255,255,255,0.94)}.s6{color:#fff}
+
+    /* --- falling text (stays bright) --- */
+    .ft1{color:rgba(240,235,225,0.90)}.ft2{color:rgba(220,212,200,0.70)}
+    .ft3{color:rgba(195,188,178,0.48)}.ft4{color:rgba(168,162,155,0.28)}
+
+    /* --- burn gradient (8 stages: white->yellow->orange->red->crimson->dark->grey->gone) --- */
+    .b1{color:rgba(255,252,240,0.96)}
+    .b2{color:rgba(255,238,170,0.94)}
+    .b3{color:rgba(255,210,100,0.90)}
+    .b4{color:rgba(255,160,55,0.84)}
+    .b5{color:rgba(240,100,30,0.72)}
+    .b6{color:rgba(190,60,20,0.52)}
+    .b7{color:rgba(130,50,30,0.32)}
+    .b8{color:rgba(80,70,65,0.15)}
+
+    /* --- ember bed (bottom glow) --- */
+    .e1{color:rgba(180,50,10,0.06)}.e2{color:rgba(200,65,15,0.14)}
+    .e3{color:rgba(220,85,20,0.24)}.e4{color:rgba(238,110,30,0.38)}
+    .e5{color:rgba(250,140,45,0.54)}.e6{color:rgba(255,170,65,0.72)}
+    .e7{color:rgba(255,200,95,0.86)}.e8{color:rgba(255,230,140,0.96)}
+
+    /* --- smoke (cool grey, subtle) --- */
+    .k1{color:rgba(130,128,125,0.04)}.k2{color:rgba(138,135,132,0.09)}
+    .k3{color:rgba(145,142,138,0.16)}.k4{color:rgba(152,148,144,0.25)}
+    .k5{color:rgba(158,155,150,0.36)}.k6{color:rgba(165,162,158,0.48)}
+    .k7{color:rgba(172,168,164,0.60)}.k8{color:rgba(178,175,170,0.72)}
+    /* warm smoke (near fire) */
+    .kw1{color:rgba(185,130,85,0.06)}.kw2{color:rgba(195,138,90,0.14)}
+    .kw3{color:rgba(205,148,95,0.26)}.kw4{color:rgba(218,160,100,0.40)}
+    .kw5{color:rgba(230,175,110,0.56)}.kw6{color:rgba(242,190,125,0.70)}
+
+    /* --- warm ambient glow --- */
+    .wg1{color:rgba(255,175,90,0.02)}.wg2{color:rgba(255,185,100,0.05)}
+    .wg3{color:rgba(255,195,110,0.09)}.wg4{color:rgba(255,205,122,0.15)}
+
+    /* --- CN subtitle --- */
+    .cn{color:rgba(175,170,162,0.48)}
+
+    /* --- noise --- */
+    .n1{color:rgba(255,255,255,0.008)}.n2{color:rgba(255,255,255,0.016)}.n3{color:rgba(255,255,255,0.028)}
+  </style>
+</head>
+<body>
+  <div id="art"></div>
+  <script type="module" src="./cigarette.ts"></script>
+</body>
+</html>

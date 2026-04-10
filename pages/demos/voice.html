@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voice</title>
+  <style>
+    *{box-sizing:border-box;margin:0}
+    html,body{height:100%;overflow:hidden;background:#040608}
+    body{display:flex;align-items:center;justify-content:center}
+    #art{text-align:center}
+    .r{display:block;white-space:pre;font:13px/15px "SF Mono","Cascadia Code","Consolas",monospace;height:15px;letter-spacing:0.4px}
+
+    /* --- subtitle (white) --- */
+    .s1{color:rgba(230,240,250,0.10)}.s2{color:rgba(230,240,250,0.32)}
+    .s3{color:rgba(230,240,250,0.55)}.s4{color:rgba(230,240,250,0.76)}
+    .s5{color:rgba(235,245,255,0.92)}.s6{color:#fff}
+
+    /* --- waveform line (cyan/teal, medical feel) --- */
+    .w1{color:rgba(80,180,200,0.18)}.w2{color:rgba(90,200,220,0.34)}
+    .w3{color:rgba(100,220,240,0.52)}.w4{color:rgba(110,230,250,0.70)}
+    .w5{color:rgba(120,240,255,0.86)}.w6{color:rgba(180,250,255,0.98)}
+
+    /* --- waveform trail (previous wave positions, fading) --- */
+    .wt1{color:rgba(60,140,170,0.10)}.wt2{color:rgba(70,155,180,0.18)}
+    .wt3{color:rgba(80,170,195,0.28)}
+
+    /* --- pulse ripple (radiating from emotional beats) --- */
+    .pr1{color:rgba(100,220,240,0.12)}.pr2{color:rgba(120,230,248,0.22)}
+    .pr3{color:rgba(140,240,255,0.36)}.pr4{color:rgba(170,248,255,0.52)}
+    .pr5{color:rgba(200,252,255,0.72)}
+
+    /* --- ambient grid (faint horizontal reference lines) --- */
+    .g1{color:rgba(60,100,120,0.06)}.g2{color:rgba(70,110,130,0.10)}
+
+    /* --- final subtitle --- */
+    .fs1{color:rgba(255,248,235,0.0)}.fs2{color:rgba(255,248,235,0.32)}
+    .fs3{color:rgba(255,250,240,0.58)}.fs4{color:rgba(255,252,245,0.80)}
+    .fs5{color:rgba(255,254,250,0.96)}
+
+    /* --- noise --- */
+    .n1{color:rgba(150,200,220,0.02)}.n2{color:rgba(150,200,220,0.04)}.n3{color:rgba(150,200,220,0.06)}
+
+    /* --- CN subtitle --- */
+    .cn{color:rgba(170,190,210,0.55)}
+
+    /* --- flatline / silence indicator --- */
+    .fl{color:rgba(90,150,170,0.40)}
+  </style>
+</head>
+<body>
+  <div id="art"></div>
+  <script type="module" src="./voice.ts"></script>
+</body>
+</html>
