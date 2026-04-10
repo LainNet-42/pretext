@@ -139,6 +139,8 @@ def encode(total_ms, bgm_path=None, bgm_vol=0.3):
     if bgm_path:
         bgm_start = detect_bgm_start(bgm_path)
         print(f"BGM: {bgm_path} (vol={bgm_vol}, start={bgm_start:.2f}s)")
+        # Pad voice to full duration with silence so closing animation has audio too
+        # duration=longest mixes across the full video length (bgm continues after voice ends)
         cmd = [
             "ffmpeg", "-y",
             "-framerate", str(FPS),
@@ -147,14 +149,14 @@ def encode(total_ms, bgm_path=None, bgm_vol=0.3):
             "-ss", str(bgm_start),
             "-i", bgm_path,
             "-filter_complex",
-            f"[1:a]volume=1.0[voice];[2:a]volume={bgm_vol}[bgm];"
-            f"[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[aout]",
+            f"[1:a]apad[voice_padded];"  # pad voice with silence to match longest
+            f"[voice_padded]volume=1.0[voice];[2:a]volume={bgm_vol}[bgm];"
+            f"[voice][bgm]amix=inputs=2:duration=longest:dropout_transition=2:normalize=0[aout]",
             "-map", "0:v", "-map", "[aout]",
 
             "-c:v", "libx264", "-preset", "medium", "-crf", "14", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "192k",
             "-t", str(duration),
-            "-shortest",
             output_path,
         ]
     else:
@@ -163,11 +165,11 @@ def encode(total_ms, bgm_path=None, bgm_vol=0.3):
             "-framerate", str(FPS),
             "-i", frame_pattern,
             "-i", VOICE_PATH,
-
+            "-filter_complex", "[1:a]apad[aout]",
+            "-map", "0:v", "-map", "[aout]",
             "-c:v", "libx264", "-preset", "medium", "-crf", "14", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "192k",
             "-t", str(duration),
-            "-shortest",
             output_path,
         ]
 

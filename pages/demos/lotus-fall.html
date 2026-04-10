@@ -6,47 +6,57 @@
   <title>Lotus Fall</title>
   <style>
     *{box-sizing:border-box;margin:0}
-    html,body{height:100%;overflow:hidden;background:#030306}
-    body{display:flex;align-items:center;justify-content:center}
-    #art{text-align:center}
-    .r{display:block;white-space:pre;font:13px/15px "SF Mono","Cascadia Code","Consolas",monospace;height:15px;letter-spacing:0.3px}
+    html,body{height:100%;overflow:hidden;background:#060810}
+    body{display:flex;align-items:center;justify-content:center;cursor:default}
+    #art{text-align:center;user-select:none;-webkit-user-select:none;pointer-events:none}
+    .r{display:block;white-space:pre;font:13px/15px "SF Mono","Cascadia Code","Consolas",monospace;height:15px;letter-spacing:0.3px;user-select:none;pointer-events:none}
+
+    /* Mobile: scale the 45x64 grid to fit phone viewport */
+    @media (max-width: 600px) {
+      #art{
+        --fw: calc(100vw / 352);
+        --fh: calc(100vh / 962);
+        transform: scale(min(var(--fw), var(--fh)));
+        transform-origin: center center;
+      }
+    }
 
     /* --- subtitle text --- */
-    .s1{color:rgba(255,255,255,0.08)}.s2{color:rgba(255,255,255,0.35)}
-    .s3{color:rgba(255,255,255,0.60)}.s4{color:rgba(255,255,255,0.80)}
-    .s5{color:rgba(255,255,255,0.94)}.s6{color:#fff}
+    .s1{color:rgba(255,255,255,0.15)}.s2{color:rgba(255,255,255,0.40)}
+    .s3{color:rgba(255,255,255,0.62)}.s4{color:rgba(255,255,255,0.82)}
+    .s5{color:rgba(255,255,255,0.95)}.s6{color:#fff}
 
     /* --- falling text --- */
-    .ft1{color:rgba(235,240,250,0.92)}.ft2{color:rgba(215,225,240,0.78)}
-    .ft3{color:rgba(190,205,225,0.60)}.ft4{color:rgba(165,180,205,0.40)}
-    .ft5{color:rgba(140,158,185,0.22)}
+    .ft1{color:rgba(235,240,250,0.95)}.ft2{color:rgba(218,228,242,0.82)}
+    .ft3{color:rgba(195,210,228,0.65)}.ft4{color:rgba(172,188,212,0.48)}
+    .ft5{color:rgba(148,166,192,0.32)}
 
     /* --- dissolving text at water --- */
-    .ds1{color:rgba(160,210,255,0.80)}.ds2{color:rgba(140,195,245,0.55)}
-    .ds3{color:rgba(120,178,232,0.35)}.ds4{color:rgba(100,160,218,0.18)}
+    .ds1{color:rgba(160,210,255,0.85)}.ds2{color:rgba(140,195,245,0.62)}
+    .ds3{color:rgba(120,178,232,0.45)}.ds4{color:rgba(100,160,218,0.28)}
 
     /* --- splash burst --- */
     .sp1{color:rgba(200,230,255,0.95)}.sp2{color:rgba(170,210,248,0.72)}
     .sp3{color:rgba(140,192,238,0.48)}.sp4{color:rgba(115,172,225,0.28)}
 
     /* --- water surface --- */
-    .w1{color:rgba(70,140,195,0.22)}.w2{color:rgba(80,155,210,0.35)}
-    .w3{color:rgba(90,168,222,0.50)}.w4{color:rgba(100,180,232,0.64)}
-    .w5{color:rgba(110,190,242,0.78)}.w6{color:rgba(120,200,250,0.88)}
-    .w7{color:rgba(140,215,255,0.96)}
+    .w1{color:rgba(70,140,195,0.32)}.w2{color:rgba(80,155,210,0.45)}
+    .w3{color:rgba(90,168,222,0.58)}.w4{color:rgba(100,180,232,0.70)}
+    .w5{color:rgba(110,190,242,0.82)}.w6{color:rgba(120,200,250,0.92)}
+    .w7{color:rgba(140,215,255,0.98)}
 
     /* --- ripple underwater --- */
-    .p1{color:rgba(85,150,208,0.14)}.p2{color:rgba(100,168,222,0.28)}
-    .p3{color:rgba(118,185,238,0.44)}.p4{color:rgba(135,198,248,0.60)}
-    .p5{color:rgba(155,212,255,0.74)}.p6{color:rgba(175,225,255,0.88)}
+    .p1{color:rgba(85,150,208,0.22)}.p2{color:rgba(100,168,222,0.36)}
+    .p3{color:rgba(118,185,238,0.52)}.p4{color:rgba(135,198,248,0.66)}
+    .p5{color:rgba(155,212,255,0.80)}.p6{color:rgba(175,225,255,0.92)}
 
     /* --- ghost traces --- */
-    .gh1{color:rgba(100,155,210,0.10)}.gh2{color:rgba(110,168,222,0.20)}
-    .gh3{color:rgba(120,180,235,0.32)}
+    .gh1{color:rgba(100,155,210,0.18)}.gh2{color:rgba(110,168,222,0.28)}
+    .gh3{color:rgba(120,180,235,0.42)}
 
     /* --- underwater glow --- */
-    .gl1{color:rgba(120,210,175,0.12)}.gl2{color:rgba(135,222,188,0.24)}
-    .gl3{color:rgba(150,235,200,0.40)}.gl4{color:rgba(168,248,215,0.58)}
+    .gl1{color:rgba(120,210,175,0.20)}.gl2{color:rgba(135,222,188,0.32)}
+    .gl3{color:rgba(150,235,200,0.48)}.gl4{color:rgba(168,248,215,0.65)}
 
     /* --- stem --- */
     .g1{color:rgba(50,195,72,0.35)}.g2{color:rgba(58,210,80,0.55)}
@@ -62,13 +72,13 @@
     .bc3{color:rgba(255,238,180,0.95)}
 
     /* --- light rays (upward from lotus) --- */
-    .lr1{color:rgba(255,235,180,0.10)}.lr2{color:rgba(255,240,190,0.22)}
-    .lr3{color:rgba(255,245,200,0.38)}.lr4{color:rgba(255,248,210,0.55)}
-    .lr5{color:rgba(255,250,220,0.72)}.lr6{color:rgba(255,252,230,0.88)}
+    .lr1{color:rgba(255,235,180,0.18)}.lr2{color:rgba(255,240,190,0.30)}
+    .lr3{color:rgba(255,245,200,0.45)}.lr4{color:rgba(255,248,210,0.60)}
+    .lr5{color:rgba(255,250,220,0.76)}.lr6{color:rgba(255,252,230,0.92)}
 
     /* --- illuminated sky (warm after light) --- */
-    .il1{color:rgba(255,240,200,0.04)}.il2{color:rgba(255,242,210,0.08)}
-    .il3{color:rgba(255,245,218,0.14)}.il4{color:rgba(255,248,225,0.22)}
+    .il1{color:rgba(255,240,200,0.08)}.il2{color:rgba(255,242,210,0.15)}
+    .il3{color:rgba(255,245,218,0.22)}.il4{color:rgba(255,248,225,0.32)}
 
     /* --- final subtitle (gentle glow) --- */
     .fs1{color:rgba(255,248,220,0.0)}.fs2{color:rgba(255,248,220,0.30)}
@@ -76,13 +86,13 @@
     .fs5{color:rgba(255,252,235,0.94)}
 
     /* --- background noise --- */
-    .n1{color:rgba(255,255,255,0.018)}.n2{color:rgba(255,255,255,0.035)}.n3{color:rgba(255,255,255,0.06)}
+    .n1{color:rgba(255,255,255,0.03)}.n2{color:rgba(255,255,255,0.055)}.n3{color:rgba(255,255,255,0.09)}
 
     /* --- ambient water --- */
-    .am1{color:rgba(80,150,210,0.08)}.am2{color:rgba(90,165,225,0.15)}
+    .am1{color:rgba(80,150,210,0.14)}.am2{color:rgba(90,165,225,0.24)}
 
     /* --- Chinese subtitle (dimmer, parenthesized) --- */
-    .cn{color:rgba(180,185,195,0.55)}
+    .cn{color:rgba(190,195,205,0.62)}
   </style>
 </head>
 <body>
