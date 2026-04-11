@@ -67,10 +67,32 @@ bun原生Windows路由bug，用 `bun serve.ts`（端口3000）。
 
 ### Hot loop (per-frame 60fps) 必须避免的模式：
 
-1. **禁止per-frame allocation**：
+1. **禁止per-frame allocation — 全链路**：
    - ❌ `const tmp = new Float32Array(wave0)` 每帧分配N元素
    - ✅ 预分配一个全局swap buffer在init时，用`.set()`复制
    - 每帧allocation会触发GC pause，直接看得见的jank
+   - **重点教训（rei demo）**：预分配`cells: Array<{ch, cls}|null>`还不够！
+     `setCell(x, y, ch, cls) { cells[idx] = { ch, cls } }` 这一行每次调用
+     都 new 一个 `{ch, cls}` 对象。密集 cabinet 每帧 setCell ~1500次 =
+     90k allocation/秒 → GC pause → **浏览器抢鼠标**。
+   - **正确方式：parallel arrays（不是 object 数组）**：
+     ```ts
+     const cellCh:  string[] = new Array(COLS*ROWS).fill('')
+     const cellCls: string[] = new Array(COLS*ROWS).fill('')
+     function setCell(x, y, ch, cls) {
+       const idx = y*COLS + x
+       cellCh[idx]  = ch    // 只是赋值，不 new 对象
+       cellCls[idx] = cls
+     }
+     ```
+   - 同理：shake post-process 的 `snapshot: Array<{x,y,c}>` 也要换成
+     预分配的 `Int16Array + string[]` 并行buffer
+   - 同理：`html += \`<span>...\``的字符串拼接→ 换 `htmlParts:string[]`
+     `push()` + `join('')`，避免 `+=` 的中间 string allocation 堆积
+   - **零分配的定义**：frame loop 里不应出现 `new X()`, `[...]`, `{...}`,
+     `.map()`, `.filter()`, `Array.from()`, spread `...`, 模板字符串里
+     复杂插值，也不应在 hot cell loop 里做 `startsWith/endsWith`
+     （用 `charCodeAt` 比字节）。
 
 2. **禁止setTimeout/setInterval在frame loop里排程**：
    - ❌ `setTimeout(() => waveBurst(...), 200)` 和frame loop异步，无法预测
@@ -102,12 +124,18 @@ bun原生Windows路由bug，用 `bun serve.ts`（端口3000）。
 ### 改代码前的performance checklist
 
 每次改frame loop前，先过一遍：
-- [ ] 没有new X(...) 分配
-- [ ] 没有setTimeout
+- [ ] 没有 `new X(...)`、`{}`、`[]` 分配 (在frame函数体内)
+- [ ] `setCell` / 类似的cell写入函数里没有 `= { ch, cls }` object literal
+- [ ] cell buffer 用 parallel string arrays (`cellCh[], cellCls[]`)，不是 object 数组
+- [ ] `cells[idx] = { ch, cls: 'new-cls' }` 这种 re-class 也要换成直接赋值 `cellCls[idx] = 'new-cls'`
+- [ ] 没有 `html += ...` 字符串拼接；用 `htmlParts.push(...); htmlParts.join('')` with pre-allocated array
+- [ ] 没有 setTimeout
 - [ ] SIM范围最小化
 - [ ] HTML有pointer-events:none
 - [ ] waveStep只调一次
 - [ ] Map/Set每帧new但是小 (<2k entries) — 可以接受但密切关注
+- [ ] 热循环里的字符串比较用 `charCodeAt(0) === 'g'.charCodeAt(0)` 而不是 `startsWith('g')`
+- [ ] 用平方距离比较 `dx*dx + dy*dy > r*r`，不要每cell调 `Math.sqrt`
 
 ### Pretext library真正用法（不是自己造simulation！）
 

@@ -23,7 +23,9 @@ const MIME: Record<string, string> = {
 
 // Route map: URL path -> file path (relative to ROOT)
 const routes: Record<string, string> = {
-  '/': 'pages/demos/index.html',
+  '/': 'pages/works.html',
+  '/works': 'pages/works.html',
+  '/demos': 'pages/demos/index.html',
   '/demos/index': 'pages/demos/index.html',
   '/demos/lotus': 'pages/demos/lotus.html',
   '/demos/lotus-fall': 'pages/demos/lotus-fall.html',

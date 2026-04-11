@@ -876,12 +876,35 @@ for (let r = 0; r < ROWS; r++) {
   const el = document.createElement('div'); el.className = 'r'; art.appendChild(el); rowEls.push(el)
 }
 
-// Pre-allocated cell buffer so we don't `new Array(COLS*ROWS).fill(null)`
-// every frame (that was triggering GC jank + grabbing input focus).
-const cells: Array<{ ch: string; cls: string } | null> = new Array(COLS * ROWS).fill(null)
+// PARALLEL ARRAYS for cell buffer — zero per-frame allocation.
+//
+// Storing cells as `{ch, cls}[]` and having `setCell` do `cells[idx] = { ch, cls }`
+// creates a new object on every call. For the dense rei cabinet that's
+// ~1500 allocations per frame × 60 fps ≈ 90k alloc/s. The GC response
+// was visible as input-focus steal ("mouse grabbed"). Split into two
+// primitive-typed arrays: no object creation in the hot path.
+//
+// Sentinels:
+//   cellCh[idx] === '' && cellCls[idx] === ''  → unset cell (renders space)
+//   cellCh[idx] === '' && cellCls[idx] !== ''  → CJK right-half continuation
+const cellCh: string[] = new Array(COLS * ROWS).fill('')
+const cellCls: string[] = new Array(COLS * ROWS).fill('')
 function clearCells(): void {
-  for (let i = 0; i < cells.length; i++) cells[i] = null
+  for (let i = 0; i < cellCh.length; i++) { cellCh[i] = ''; cellCls[i] = '' }
 }
+
+// Shake post-process buffers (pre-allocated — no per-frame alloc).
+// Size = cabinet bounding box (41 rows × 45 cols = 1845 max).
+const SHAKE_CAP = 2048
+const shakeSnapX = new Int16Array(SHAKE_CAP)
+const shakeSnapY = new Int16Array(SHAKE_CAP)
+const shakeSnapCh: string[] = new Array(SHAKE_CAP).fill('')
+const shakeSnapCls: string[] = new Array(SHAKE_CAP).fill('')
+
+// Re-used HTML builder. `push(...pieces)` then `.join('')` is cheaper
+// than `html += template` because it avoids the intermediate string
+// allocations that `+=` keeps on the heap.
+const htmlParts: string[] = []
 
 // ============================================================
 //  AUDIO  (cue-driven)
@@ -1180,11 +1203,14 @@ function frame(now: number): void {
   const eggPose = getEggPose(s)
 
   // ---- build cell map ----
-  // Reuse the pre-allocated `cells` buffer to avoid per-frame GC jank.
+  // Reuse the pre-allocated parallel arrays. setCell writes into two
+  // primitive arrays, NOT an `{ch, cls}` object — zero allocation.
   clearCells()
   function setCell(x: number, y: number, ch: string, cls: string): void {
     if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return
-    cells[y * COLS + x] = { ch, cls }
+    const idx = y * COLS + x
+    cellCh[idx] = ch
+    cellCls[idx] = cls
   }
 
   if (cabinetVisible) {
@@ -1531,14 +1557,15 @@ function frame(now: number): void {
       const nearFront = Math.abs(cabFade - rowFrac) < 0.08
       if (gone) {
         for (let x = CAB_LEFT; x <= CAB_RIGHT; x++) {
-          cells[y * COLS + x] = null
+          const idx = y * COLS + x
+          cellCh[idx] = ''
+          cellCls[idx] = ''
         }
       } else if (nearFront) {
-        // dim the cells along the fade front
         for (let x = CAB_LEFT; x <= CAB_RIGHT; x++) {
-          const c = cells[y * COLS + x]
-          if (c && H(x * 31 + y * 17) < 0.5) {
-            cells[y * COLS + x] = { ch: c.ch, cls: 'f1' }
+          const idx = y * COLS + x
+          if (cellCls[idx] !== '' && H(x * 31 + y * 17) < 0.5) {
+            cellCls[idx] = 'f1'
           }
         }
       }
@@ -1584,11 +1611,13 @@ function frame(now: number): void {
     if (dimIntensity > 0) {
       for (let y = REEL_TOP + REEL_H; y <= CAB_BOT + 2; y++) {
         for (let x = CAB_LEFT; x <= CAB_RIGHT; x++) {
-          const c = cells[y * COLS + x]
-          if (!c) continue
-          if (c.cls.startsWith('f1') || c.cls === 'rw') continue
+          const idx = y * COLS + x
+          const cls = cellCls[idx]!
+          if (cls === '') continue
+          if (cls.charCodeAt(0) === 102 /* 'f' */ && cls.length >= 2 && cls[1] === '1') continue
+          if (cls === 'rw') continue
           if (H(x * 3 + y * 5) < dimIntensity) {
-            cells[y * COLS + x] = { ch: c.ch, cls: 'f1' }
+            cellCls[idx] = 'f1'
           }
         }
       }
@@ -1603,24 +1632,26 @@ function frame(now: number): void {
     if (jp > 0.1) {
       const tintT = Math.min(1, (jp - 0.1) / 0.55)   // reach full coverage at jp=0.65
       const tintRadius = tintT * 55
+      const tintR2 = tintRadius * tintRadius            // compare squared distances, no sqrt
       const ccx = REEL_COLS[1]! + REEL_W / 2
       const ccy = REEL_TOP + REEL_H / 2
       for (let y = 0; y < ROWS; y++) {
+        const dy = (y - ccy) * 1.6
+        const dy2 = dy * dy
         for (let x = 0; x < COLS; x++) {
-          const c = cells[y * COLS + x]
-          if (!c) continue
-          // Already gold? skip.
-          if (c.cls.startsWith('gb') || c.cls.startsWith('rs') || c.cls.startsWith('jp')) continue
+          const idx = y * COLS + x
+          const cls = cellCls[idx]!
+          if (cls === '') continue
+          // Already gold? skip. Avoid startsWith() to save per-cell cost.
+          const c0 = cls.charCodeAt(0)
+          if (c0 === 103 /* g */ || c0 === 106 /* j */) continue
+          if (c0 === 114 && cls.length >= 2 && cls.charCodeAt(1) === 115) continue  // "rs"
           const dx = x - ccx
-          const dy = (y - ccy) * 1.6
-          const d = Math.sqrt(dx * dx + dy * dy)
-          if (d > tintRadius) continue
-          // Extract the brightness level from the class suffix (f1/f2/f3,
-          // sp1/sp2/sp3, lv1/lv3, tc1/tc3, etc). Default to gb2.
-          const last = c.cls[c.cls.length - 1]
-          let lvl = 2
-          if (last && last >= '1' && last <= '3') lvl = parseInt(last, 10)
-          cells[y * COLS + x] = { ch: c.ch, cls: `gb${lvl}` }
+          if (dx * dx + dy2 > tintR2) continue
+          // Class suffix digit → brightness level; default 2.
+          const last = cls.charCodeAt(cls.length - 1)
+          const lvl = (last >= 49 && last <= 51) ? (last - 48) : 2
+          cellCls[idx] = lvl === 1 ? 'gb1' : lvl === 3 ? 'gb3' : 'gb2'
         }
       }
     }
@@ -1652,7 +1683,7 @@ function frame(now: number): void {
           const px = Math.round(cx + dxUnit * t)
           const py = Math.round(cy + dyUnit * t)
           if (px < 0 || px >= COLS || py < 0 || py >= ROWS) continue
-          if (cells[py * COLS + px]) continue
+          if (cellCls[py * COLS + px] !== '') continue
           // Brightness fades with distance
           const fade = 1 - (t / maxRadius)
           const lvl = cl(Math.ceil(fade * alpha * 3), 1, 3)
@@ -1685,7 +1716,7 @@ function frame(now: number): void {
           const px = Math.round(cx + Math.cos(a) * ring.radius)
           const py = Math.round(cy + Math.sin(a) * ring.radius * 0.6)
           if (px < 0 || px >= COLS || py < 0 || py >= ROWS) continue
-          if (cells[py * COLS + px]) continue
+          if (cellCls[py * COLS + px] !== '') continue
           const lvl = cl(Math.ceil(alpha * 3), 1, 3)
           setCell(px, py, '\u2736', `gb${lvl}`)
         }
@@ -1700,20 +1731,32 @@ function frame(now: number): void {
   // re-lays with (shakeDx, shakeDy) offset. Outside-cabinet cells
   // (particles etc.) stay put.
   if (shakeDx !== 0 || shakeDy !== 0) {
-    const snapshot: Array<{ x: number; y: number; c: { ch: string; cls: string } }> = []
+    // In-place shift using the pre-allocated shake-snapshot buffers
+    // (defined at module scope). We record the old contents of the
+    // cabinet bounding box, clear it, then replay each cell at the
+    // shake offset. Zero allocation.
+    let n = 0
     for (let y = CAB_TOP - 1; y <= CAB_BOT + 2; y++) {
       for (let x = CAB_LEFT; x <= CAB_RIGHT; x++) {
-        const c = cells[y * COLS + x]
-        if (c) {
-          snapshot.push({ x, y, c })
-          cells[y * COLS + x] = null
+        const idx = y * COLS + x
+        if (cellCls[idx] !== '') {
+          shakeSnapX[n] = x
+          shakeSnapY[n] = y
+          shakeSnapCh[n] = cellCh[idx]!
+          shakeSnapCls[n] = cellCls[idx]!
+          n++
+          cellCh[idx] = ''
+          cellCls[idx] = ''
         }
       }
     }
-    for (const { x, y, c } of snapshot) {
-      const nx = x + shakeDx, ny = y + shakeDy
+    for (let i = 0; i < n; i++) {
+      const nx = shakeSnapX[i]! + shakeDx
+      const ny = shakeSnapY[i]! + shakeDy
       if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
-        cells[ny * COLS + nx] = c
+        const idx = ny * COLS + nx
+        cellCh[idx] = shakeSnapCh[i]!
+        cellCls[idx] = shakeSnapCls[i]!
       }
     }
   }
@@ -1825,7 +1868,7 @@ function frame(now: number): void {
         for (let dx = -5; dx <= 5; dx++) {
           const px = cx + dx, py = cy + dy
           if (px < 0 || px >= COLS || py < 0 || py >= ROWS) continue
-          if (cells[py * COLS + px]) continue
+          if (cellCls[py * COLS + px] !== '') continue
           const d = Math.sqrt(dx * dx + (dy * 1.5) ** 2)
           const intensity = Math.max(0, 1 - d / 5)
           if (H(px * 31 + py * 17 + fi * 5) < intensity * 0.08) {
@@ -2096,7 +2139,7 @@ function frame(now: number): void {
         if (slideT > 0.3) {
           const leadX = Math.round(wordLeft + wordW - 1)
           for (let bx = leadX + 1; bx < LEVER_X; bx++) {
-            if (cells[row * COLS + bx]) continue
+            if (cellCls[row * COLS + bx] !== '') continue
             const beamLvl = cl(Math.ceil((1 - (bx - leadX) / Math.max(1, LEVER_X - leadX)) * 4), 1, 4)
             setCell(bx, row, '\u2500', `rei${beamLvl}`)
           }
@@ -2163,27 +2206,31 @@ function frame(now: number): void {
   // ============================================================
   //  RENDER
   // ============================================================
-
+  //
+  // Assemble each row's HTML by pushing into a reused array and
+  // joining once. No `const c = cells[idx]` object dereference —
+  // directly read the parallel string arrays.
+  const noiseOn = s < CABINET_FADE_START
   for (let gy = 0; gy < ROWS; gy++) {
     if (gfade <= 0) { rowEls[gy]!.innerHTML = ''; continue }
-    // Ambient noise: on during the slot phase, off once the scene
-    // transitions to the quiet dialogue so the Q&A feels clean.
-    const noiseOn = s < CABINET_FADE_START
-    let html = ''
+    const rowBase = gy * COLS
+    htmlParts.length = 0
     for (let gx = 0; gx < COLS; gx++) {
-      const c = cells[gy * COLS + gx]
-      if (c) {
-        if (c.ch === '') continue
-        html += `<span class="${c.cls}">${esc(c.ch)}</span>`
+      const idx = rowBase + gx
+      const cls = cellCls[idx]!
+      if (cls !== '') {
+        const ch = cellCh[idx]!
+        if (ch === '') continue       // CJK right-half continuation
+        htmlParts.push('<span class="', cls, '">', esc(ch), '</span>')
       } else {
         if (noiseOn && H(gx * 73 + gy * 137 + fi * 13) < 0.006) {
-          html += `<span class="n1">·</span>`
+          htmlParts.push('<span class="n1">·</span>')
         } else {
-          html += ' '
+          htmlParts.push(' ')
         }
       }
     }
-    rowEls[gy]!.innerHTML = html
+    rowEls[gy]!.innerHTML = htmlParts.join('')
   }
 
   requestAnimationFrame(frame)

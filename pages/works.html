@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>作品</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;background:#06080c;color:#d8dde6;font-family:"SF Mono","Cascadia Code","Consolas",ui-monospace,monospace}
+    body{
+      min-height:100vh;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      padding:48px 24px;
+      background:radial-gradient(ellipse at center,#0c1018 0%,#06080c 70%);
+    }
+    .head{
+      text-align:center;
+      margin-bottom:56px;
+      letter-spacing:0.2em;
+    }
+    .head .brand{
+      font-size:11px;
+      color:#5a6478;
+      text-transform:uppercase;
+    }
+    .head h1{
+      margin-top:8px;
+      font:300 22px/1 "SF Mono",ui-monospace,monospace;
+      letter-spacing:0.4em;
+      color:#aeb8c8;
+    }
+    .grid{
+      display:flex;
+      flex-direction:column;
+      gap:32px;
+      width:min(640px,100%);
+    }
+    @media (min-width:780px){
+      .grid{
+        flex-direction:row;
+        width:min(960px,100%);
+      }
+    }
+    a.card{
+      flex:1;
+      display:block;
+      text-decoration:none;
+      color:inherit;
+      padding:32px 28px 36px;
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(255,255,255,0.015);
+      transition:border-color .25s ease, background .25s ease, transform .25s ease;
+      position:relative;
+      overflow:hidden;
+    }
+    a.card:hover{
+      border-color:rgba(255,255,255,0.22);
+      background:rgba(255,255,255,0.04);
+      transform:translateY(-2px);
+    }
+    a.card .num{
+      position:absolute;
+      top:14px;right:18px;
+      font-size:11px;
+      color:#3a4252;
+      letter-spacing:0.15em;
+    }
+    a.card .ja{
+      font-size:13px;
+      color:#6b7588;
+      letter-spacing:0.25em;
+      margin-bottom:6px;
+    }
+    a.card h2{
+      margin:0;
+      font:700 38px/1 "Hiragino Mincho ProN","Yu Mincho",Georgia,serif;
+      letter-spacing:0.05em;
+      color:#e8ecf3;
+    }
+    a.card .rule{
+      width:48px;height:1px;
+      background:rgba(255,255,255,0.18);
+      margin:18px 0 16px;
+    }
+    a.card .blurb{
+      font:13px/1.7 "SF Mono",ui-monospace,monospace;
+      color:#94a0b5;
+      max-width:32ch;
+      white-space:pre-line;
+    }
+    a.card .meta{
+      margin-top:22px;
+      display:flex;
+      gap:14px;
+      font-size:10px;
+      color:#465064;
+      letter-spacing:0.12em;
+      text-transform:uppercase;
+    }
+    a.card .meta span::before{content:"・";margin-right:6px;color:#2a3142}
+    a.card .meta span:first-child::before{content:"";margin:0}
+
+    /* tonal accents per work */
+    a.lotus{
+      background:linear-gradient(180deg,rgba(40,80,120,0.06) 0%,rgba(255,255,255,0.015) 60%);
+    }
+    a.lotus:hover{ border-color:rgba(140,190,235,0.35); }
+    a.lotus h2{ color:#dce6f1; }
+    a.lotus .ja{ color:#7a8da4; }
+
+    a.gacha{
+      background:linear-gradient(180deg,rgba(180,140,70,0.05) 0%,rgba(255,255,255,0.015) 60%);
+    }
+    a.gacha:hover{ border-color:rgba(220,180,110,0.40); }
+    a.gacha h2{ color:#f1ead8; }
+    a.gacha .ja{ color:#9c8b6c; }
+
+    .foot{
+      margin-top:64px;
+      font-size:10px;
+      color:#3a4252;
+      letter-spacing:0.18em;
+      text-transform:uppercase;
+    }
+    .foot a{color:#5a6478;text-decoration:none}
+    .foot a:hover{color:#9aa4b8}
+  </style>
+</head>
+<body>
+  <div class="head">
+    <div class="brand">PRETEXT &nbsp;・&nbsp; 作品</div>
+    <h1>WORKS</h1>
+  </div>
+
+  <div class="grid">
+    <a class="card lotus" href="/demos/lotus-fall">
+      <div class="num">01</div>
+      <div class="ja">SUI&middot;SOU</div>
+      <h2>水葬</h2>
+      <div class="rule"></div>
+      <div class="blurb">字が水面に落ち、
+ひとひらの蓮を咲かせる。
+最後に、ひとつの灯。</div>
+      <div class="meta">
+        <span>ASCII</span>
+        <span>22 sec</span>
+        <span>vertical</span>
+      </div>
+    </a>
+
+    <a class="card gacha" href="/demos/rei">
+      <div class="num">02</div>
+      <div class="ja">ICHIBAN&middot;KUJI</div>
+      <h2>一番賞</h2>
+      <div class="rule"></div>
+      <div class="blurb">三度のレバー、三度の祈り。
+「猫、竜、梟……違う。」
+「梟、梟、梟。 ……いた。」</div>
+      <div class="meta">
+        <span>ASCII</span>
+        <span>49 sec</span>
+        <span>vertical</span>
+        <span>voice</span>
+      </div>
+    </a>
+  </div>
+
+  <div class="foot">
+    <a href="/demos/index">tech demos &rarr;</a>
+  </div>
+</body>
+</html>
