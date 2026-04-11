@@ -1,4 +1,4 @@
-import { prepareWithSegments, layoutNextLine } from '../../src/layout.ts'
+import { prepareWithSegments } from '../../src/layout.ts'
 
 // ============================================================
 //  スロット — Slot Machine + Rei
@@ -294,32 +294,13 @@ const TIMING: [number, number, number][] = [
   [17.0, 0.2,  0.4],        // 11 梟
   [17.9, 0.2,  0.4],        // 12 梟
   [18.8, 0.3,  0.3],        // 13 梟 (jackpot)
-  [19.3, 0.3,  1.8],        // 14 いた
+  [19.3, 0.3,  0.7],        // 14 いた (short hold, clears before tickets)
 ]
 
 // Fall physics: horizontal force streak (SUB_ROW = LEVER_TOP_IDLE - 1, so
 // no vertical drop — pure right-ward streak to the lever handle).
 const FALL_DUR = 0.8
 const KITE_LINE = KITE
-
-// Kanji stream that flows upward through the 3 light pillars during the
-// jackpot moment. Each char is one CJK glyph (2 cols wide). Ordered so
-// repeats look organic as the stream scrolls.
-const LUCKY_KANJI = [
-  '\u68DF',  // 梟 owl
-  '\u5149',  // 光 light
-  '\u91D1',  // 金 gold
-  '\u904B',  // 運 luck
-  '\u68DF',  // 梟
-  '\u5B9D',  // 宝 treasure
-  '\u5149',  // 光
-  '\u795D',  // 祝 celebration
-]
-
-// A short Rei quote that the pretext library flows through the cabinet
-// body during the sustained jackpot burst — real pretext usage, text
-// wraps through arbitrary-width segments (the empty display-area row).
-const JACKPOT_QUOTE = '\u6765\u3066\u3002\u68DF\u3002\u5149\u3002\u68DF\u3002\u3044\u305F\u3002\u68DF\u3002\u5149\u3002\u68DF\u3002\u3044\u305F\u3002'  // 来て。梟。光。梟。いた。...
 
 interface Phase {
   pullStart: number
@@ -409,17 +390,13 @@ for (const e of EYES) ALL_CHARS.add(e)
 for (const c of '╔═╗║╚╝┌┐└┘─│╭╮╰╯├┤┬┴┼ *+·✦✹×◉@°oO@.,\'`[]?●○◆◇░▒▓█★-_/\\|v^VJACKPOTSLOTCLAUDEPETSINSERTCOINCREDITSPAYOUT!()><~=\u2736\u25C8\u2550\u2551\u2503\u2502\u2580\u2584\u2582\u2501\u257B\u25B8\u25C2\u266A\u266B\u266C') {
   ALL_CHARS.add(c)
 }
-for (const c of LUCKY_KANJI) ALL_CHARS.add(c)
-for (const c of JACKPOT_QUOTE) ALL_CHARS.add(c)
 for (const c of '\u307E\u305F\u306D\u3002(\u518D\u89C1)') ALL_CHARS.add(c)  // またね。(再见)
+// Jackpot rotating ray glyphs
+for (const c of '\u2571\u2572\u2500\u2502\u2550\u2551\u254B') ALL_CHARS.add(c) // ╱ ╲ ─ │ ═ ║ ╋
 for (const line of SCRIPT) for (const c of line) ALL_CHARS.add(c)
 for (const line of SCRIPT_CN) for (const c of line) ALL_CHARS.add(c)
 for (const m of CHAT) { for (const c of m.text) ALL_CHARS.add(c); for (const c of m.cn) ALL_CHARS.add(c) }
 for (const c of ALL_CHARS) prepareWithSegments(c, FONT)
-
-// Prepare the jackpot quote for real pretext flow (layoutNextLine reads
-// this to fit the text into variable-width segments each frame).
-const preparedQuote = prepareWithSegments(JACKPOT_QUOTE, FONT)
 
 // ---- CJK ----
 function isCJK(c: number): boolean {
@@ -1347,40 +1324,27 @@ function frame(now: number): void {
     }
   }
 
-  // Helper: render a pretext-laid-out text line at a given (sx, y) with
-  // golden coloring, respecting CJK double-width.
-  function renderFlowedLine(sx: number, y: number, txt: string, alpha: number): void {
-    const offs = coffs(txt)
-    for (let j = 0; j < txt.length; j++) {
-      const gx = sx + offs[j]!
-      if (gx < 0 || gx >= COLS) continue
-      const ch = txt[j]!
-      if (ch === ' ') continue
-      const cw = isCJK(ch.charCodeAt(0)) ? 2 : 1
-      const lvl = cl(Math.ceil(alpha * 3), 1, 3)
-      setCell(gx, y, ch, `gb${lvl}`)
-      if (cw === 2) setCell(gx + 1, y, '', `gb${lvl}`)
-    }
-  }
-
   // ============================================================
-  //  JACKPOT MOMENT — 2.4s sustained golden burst
+  //  JACKPOT MOMENT — 2.4s rotating golden starburst
   // ============================================================
   //
-  // Three things happen simultaneously for 2.4s:
-  //   1. Dark-focus — cabinet body below the reels dims to f1 so the
-  //      reels "pop" golden against a dark body.
-  //   2. Light pillars (top) — 3 vertical golden columns rise from each
-  //      reel up through the marquee. Inside each pillar, pretext flows
-  //      a stream of lucky kanji (光梟金運…) that scrolls UPWARD,
-  //      showing real pretext-library text layout.
-  //   3. Expanding halo — a golden ring around the center reel grows
-  //      outward, filling with faint dots, giving the sustained
-  //      "爽感" burst Rei-style without arcade-y flash.
+  // Center of the middle reel emits:
+  //   1. 8 rotating light rays that sweep outward (radial slash chars
+  //      picked by angle — ─ / | \ — creating the classic "spinning
+  //      flash" look you see on slot machines when you hit big).
+  //   2. A pulsing star burst at the very center (✹ ★ ✦ cycling).
+  //   3. A ring of co-rotating sparkle dots at multiple radii.
+  //   4. Darkened cabinet body so the golden burst really pops.
+  //
+  // No kanji — just rotating light. Envelope: 0→1 over 15%, sustain,
+  // 1→0 over last 15%.
   if (s >= JACKPOT_TIME && s < JACKPOT_END) {
     const jp = (s - JACKPOT_TIME) / (JACKPOT_END - JACKPOT_TIME)  // 0..1
+    const alpha =
+      jp < 0.15 ? jp / 0.15 :
+      jp > 0.85 ? Math.max(0, (1 - jp) / 0.15) : 1
 
-    // --- 1. Dark body dim ---
+    // --- 1. Dark body dim below the reels ---
     const dimIntensity = jp < 0.85 ? 1 : Math.max(0, 1 - (jp - 0.85) * 6.66)
     if (dimIntensity > 0) {
       for (let y = REEL_TOP + REEL_H; y <= CAB_BOT + 2; y++) {
@@ -1395,132 +1359,69 @@ function frame(now: number): void {
       }
     }
 
-    // --- 2. Kanji-stream light pillars ---
-    // Use pretext's layoutNextLine to flow a ribbon of lucky kanji
-    // through the narrow reel column. The word flow scrolls upward
-    // as time advances so the pillar feels alive.
-    //
-    // The pillar alpha ramps up fast (0 → 1 in 0.15 of the window),
-    // holds at full for 70% of the time, then fades out.
-    const pillarGrow =
-      jp < 0.15 ? jp / 0.15 :
-      jp > 0.85 ? Math.max(0, (1 - jp) / 0.15) : 1
-    const pillarAlpha = pillarGrow
-    if (pillarAlpha > 0.05) {
-      const PILLAR_TOP_Y = CAB_TOP - 1
-      const PILLAR_BOT_Y = REEL_TOP - 2
-      const pillarH = PILLAR_BOT_Y - PILLAR_TOP_Y + 1
-      const scrollOffset = Math.floor((s - JACKPOT_TIME) * 8)  // rows/sec upward
+    if (alpha > 0.05) {
+      const cx = REEL_COLS[1]! + REEL_W / 2
+      const cy = REEL_TOP + REEL_H / 2
+      const baseAngle = (s - JACKPOT_TIME) * Math.PI * 0.6  // rotates ~0.3 rev/s
+      const rayCount = 8
+      const maxRadius = 14
 
-      for (let r = 0; r < 3; r++) {
-        const cx = REEL_COLS[r]! + Math.floor(REEL_W / 2)
-
-        // Each reel gets 2 adjacent columns (cx-1, cx) for the pillar
-        // body + its kanji stream.
-        const leftCol = cx - 1
-
-        // Pick a kanji for each row using a deterministic stream,
-        // offset by scrollOffset so the text appears to flow upward.
-        for (let yRel = 0; yRel < pillarH; yRel++) {
-          const y = PILLAR_BOT_Y - yRel
-          if (y < 0 || y >= ROWS) continue
-          const streamIdx = (yRel + scrollOffset + r * 3) % LUCKY_KANJI.length
-          const kch = LUCKY_KANJI[streamIdx]!
-          // Brightness fades toward the top so the stream looks like
-          // light rising and dissipating.
-          const heightT = yRel / pillarH
-          const lvl = cl(Math.ceil((1 - heightT * 0.5) * pillarAlpha * 3), 1, 3)
-          // The kanji occupies 2 cols (leftCol, leftCol+1)
-          setCell(leftCol, y, kch, `gb${lvl}`)
-          setCell(leftCol + 1, y, '', `gb${lvl}`)
-        }
-
-        // Thin light shaft beside the kanji column, for extra glow
-        for (let yRel = 0; yRel < pillarH; yRel++) {
-          const y = PILLAR_BOT_Y - yRel
-          if (y < 0 || y >= ROWS) continue
-          const shaftX = cx + 1
-          if (shaftX >= CAB_RIGHT) continue
-          if (cells[y * COLS + shaftX]) continue
-          const heightT = yRel / pillarH
-          const lvl = cl(Math.ceil((1 - heightT * 0.6) * pillarAlpha * 2), 1, 2)
-          setCell(shaftX, y, '\u2502', `gb${lvl}`)
-        }
-      }
-    }
-
-    // --- 2b. Pretext text-flow through the bottom cabinet rows ---
-    //
-    // During the jackpot moment the cabinet body is dark-dimmed, so the
-    // lower half of the cabinet (rows 25-33) is mostly empty cells. We
-    // run `layoutNextLine` to pour JACKPOT_QUOTE into those rows, using
-    // pretext's proper variable-width layout. Text scrolls by advancing
-    // the starting segmentIndex over time.
-    if (pillarAlpha > 0.05) {
-      const FLOW_TOP = 25
-      const FLOW_BOT = 33
-      const PX_PER_COL = 7.8
-      const segCount = preparedQuote.segments.length
-      const startSegIdx = segCount > 0
-        ? Math.floor((s - JACKPOT_TIME) * 2) % segCount
-        : 0
-      let cursor: { segmentIndex: number; graphemeIndex: number } =
-        { segmentIndex: startSegIdx, graphemeIndex: 0 }
-
-      for (let y = FLOW_TOP; y <= FLOW_BOT; y++) {
-        let bestStart = -1, bestLen = 0
-        let runStart = -1, runLen = 0
-        for (let x = CAB_LEFT + 2; x <= CAB_RIGHT - 2; x++) {
-          if (!cells[y * COLS + x]) {
-            if (runStart === -1) runStart = x
-            runLen++
-            if (runLen > bestLen) { bestLen = runLen; bestStart = runStart }
-          } else {
-            runStart = -1; runLen = 0
-          }
-        }
-        if (bestLen < 4) continue
-
-        const maxWidth = bestLen * PX_PER_COL
-        let line = layoutNextLine(preparedQuote, cursor, maxWidth)
-        if (!line) {
-          // End of text reached — wrap the cursor back to start.
-          cursor = { segmentIndex: 0, graphemeIndex: 0 }
-          line = layoutNextLine(preparedQuote, cursor, maxWidth)
-          if (!line) continue
-        }
-        cursor = line.end
-        renderFlowedLine(bestStart, y, line.text, pillarAlpha)
-      }
-    }
-
-    // --- 3. Expanding golden halo around the middle reel ---
-    // The halo radius grows from 0 to MAX_HALO over the first 60% of
-    // the window, then holds, then fades.
-    const haloMaxR = 9
-    const haloRadius =
-      jp < 0.4 ? (jp / 0.4) * haloMaxR :
-      jp < 0.85 ? haloMaxR :
-      haloMaxR * Math.max(0, 1 - (jp - 0.85) * 6.66)
-    if (haloRadius > 1) {
-      const hcx = REEL_COLS[1]! + REEL_W / 2
-      const hcy = REEL_TOP + REEL_H / 2
-      const haloR = Math.ceil(haloRadius)
-      for (let dy = -haloR; dy <= haloR; dy++) {
-        for (let dx = -haloR; dx <= haloR; dx++) {
-          const px = Math.round(hcx + dx)
-          const py = Math.round(hcy + dy)
+      // --- 1. Rotating radial rays ---
+      // For each ray angle, step out from center and plot characters
+      // along the line. Pick glyph by angle octant so the line reads
+      // visually (─, /, |, \).
+      for (let r = 0; r < rayCount; r++) {
+        const ang = baseAngle + (r * Math.PI * 2) / rayCount
+        const dxUnit = Math.cos(ang)
+        const dyUnit = Math.sin(ang) * 0.6  // y-axis squash so rays look circular in the rectangular cell grid
+        // Pick glyph by direction
+        const absCos = Math.abs(dxUnit)
+        const absSin = Math.abs(dyUnit / 0.6)
+        let glyph: string
+        if (absSin < 0.35) glyph = '\u2500'              // ─
+        else if (absCos < 0.35) glyph = '\u2502'          // │
+        else if (dxUnit * (dyUnit / 0.6) > 0) glyph = '\u2572'  // ╲
+        else glyph = '\u2571'                             // ╱
+        for (let t = 2; t <= maxRadius; t++) {
+          const px = Math.round(cx + dxUnit * t)
+          const py = Math.round(cy + dyUnit * t)
           if (px < 0 || px >= COLS || py < 0 || py >= ROWS) continue
           if (cells[py * COLS + px]) continue
-          const d = Math.sqrt(dx * dx + (dy * 1.6) ** 2)
-          if (d > haloRadius) continue
-          // Dots thicker near the ring edge (0.7-1.0 of radius)
-          const edgeDist = Math.abs(d / haloRadius - 0.85)
-          const intensity = Math.max(0, 1 - edgeDist * 4) * pillarAlpha
-          if (H(px * 31 + py * 17 + fi * 7) < intensity * 0.35) {
-            const lvl = cl(Math.ceil(intensity * 3), 1, 3)
-            setCell(px, py, '\u00B7', `gb${lvl}`)
+          // Brightness fades with distance
+          const fade = 1 - (t / maxRadius)
+          const lvl = cl(Math.ceil(fade * alpha * 3), 1, 3)
+          if (lvl > 0) {
+            setCell(px, py, glyph, `gb${lvl}`)
           }
+        }
+      }
+
+      // --- 2. Pulsing center star ---
+      const starChars = ['\u2739', '\u2605', '\u2736', '\u2737']  // ✹ ★ ✦ ✷
+      const starIdx = Math.floor(fi * 0.3) % starChars.length
+      setCell(Math.round(cx), Math.round(cy), starChars[starIdx]!, 'gb3')
+      // A glow cross right at center
+      setCell(Math.round(cx) - 1, Math.round(cy), '\u2500', 'gb2')
+      setCell(Math.round(cx) + 1, Math.round(cy), '\u2500', 'gb2')
+      setCell(Math.round(cx), Math.round(cy) - 1, '\u2502', 'gb2')
+      setCell(Math.round(cx), Math.round(cy) + 1, '\u2502', 'gb2')
+
+      // --- 3. Co-rotating sparkle rings ---
+      // Two rings of sparkles rotating in opposite directions at different
+      // radii so the burst looks busy but controlled.
+      const rings: Array<{ radius: number; count: number; angVel: number; phase: number }> = [
+        { radius: 4, count: 6, angVel:  1.8, phase: 0 },
+        { radius: 8, count: 10, angVel: -1.2, phase: Math.PI / 6 },
+      ]
+      for (const ring of rings) {
+        for (let k = 0; k < ring.count; k++) {
+          const a = (s - JACKPOT_TIME) * ring.angVel + ring.phase + (k * Math.PI * 2) / ring.count
+          const px = Math.round(cx + Math.cos(a) * ring.radius)
+          const py = Math.round(cy + Math.sin(a) * ring.radius * 0.6)
+          if (px < 0 || px >= COLS || py < 0 || py >= ROWS) continue
+          if (cells[py * COLS + px]) continue
+          const lvl = cl(Math.ceil(alpha * 3), 1, 3)
+          setCell(px, py, '\u2736', `gb${lvl}`)
         }
       }
     }
@@ -1757,44 +1658,75 @@ function frame(now: number): void {
     }
   }
 
-  // ---- Closing ending: 「またね。」fades in, then everything fades out ----
+  // ---- Closing ending: 「またね。」flies out of buddy, lands centered ----
   //
-  // After the Q&A wraps up, the buddy dims (handled in the buddy render
-  // above), and a single centered line — "またね。" / (再见。) — fades in
-  // a few rows below the buddy in Rei blue, holds, then everything
-  // gently fades to black.
+  // Each char of MATANE is a particle that launches from the buddy's
+  // center and arcs out to its final centered destination row below
+  // the buddy, with a 3-step trail behind it. Chars stagger in one by
+  // one (0.15s apart), ease-out cubic flight over 0.55s each. Once
+  // all chars have landed, CN fades in beneath.
   if (s >= CLOSING_TEXT_AT && s < TOTAL) {
     const MATANE = '\u307E\u305F\u306D\u3002'          // またね。
     const MATANE_CN = '(\u518D\u89C1)'                  // (再见)
-    const fadeIn = Math.min(1, (s - CLOSING_TEXT_AT) / 1.5)
-    const hold = s < FADE_OUT_START ? 1 : Math.max(0, 1 - (s - FADE_OUT_START) / (TOTAL - FADE_OUT_START))
-    const alpha = fadeIn * hold
-    if (alpha > 0.02) {
-      const lvl = cl(Math.ceil(alpha * 6), 1, 6)
-      // JP line centered 4 rows below the buddy
-      const matRow = BUDDY_Y + BUDDY_H + 4
-      const mW = vw(MATANE)
-      const mX = Math.floor((COLS - mW) / 2)
-      const mOffs = coffs(MATANE)
-      for (let j = 0; j < MATANE.length; j++) {
-        const gx = mX + mOffs[j]!
-        const ch = MATANE[j]!
-        const cw = isCJK(ch.charCodeAt(0)) ? 2 : 1
-        setCell(gx, matRow, ch, `rei${lvl}`)
-        if (cw === 2) setCell(gx + 1, matRow, '', `rei${lvl}`)
+    const CHAR_STAGGER = 0.18
+    const FLY_DUR = 0.6
+    const matRow = BUDDY_Y + BUDDY_H + 4
+    const matW = vw(MATANE)
+    const matX = Math.floor((COLS - matW) / 2)
+    const matOffs = coffs(MATANE)
+    // Start point = buddy center
+    const startX = BUDDY_X + BUDDY_W / 2
+    const startY = BUDDY_Y + BUDDY_H / 2
+    const fadeOutAlpha = s < FADE_OUT_START
+      ? 1
+      : Math.max(0, 1 - (s - FADE_OUT_START) / (TOTAL - FADE_OUT_START))
+
+    let allLanded = true
+    for (let j = 0; j < MATANE.length; j++) {
+      const launchAt = CLOSING_TEXT_AT + j * CHAR_STAGGER
+      if (s < launchAt) { allLanded = false; continue }
+      const flyT = Math.min(1, (s - launchAt) / FLY_DUR)
+      if (flyT < 1) allLanded = false
+      const eased = 1 - Math.pow(1 - flyT, 3)  // ease-out cubic
+      const endX = matX + matOffs[j]!
+      const endY = matRow
+      const px = Math.round(startX + (endX - startX) * eased)
+      const py = Math.round(startY + (endY - startY) * eased)
+      const ch = MATANE[j]!
+      const cw = isCJK(ch.charCodeAt(0)) ? 2 : 1
+
+      // 3-step trail behind the flight path
+      for (let k = 3; k >= 1; k--) {
+        const tp = flyT - k * 0.09
+        if (tp <= 0) continue
+        const tEased = 1 - Math.pow(1 - tp, 3)
+        const tpx = Math.round(startX + (endX - startX) * tEased)
+        const tpy = Math.round(startY + (endY - startY) * tEased)
+        if (tpx < 0 || tpx >= COLS || tpy < 0 || tpy >= ROWS) continue
+        const trailLvl = cl(4 - k, 1, 3)
+        setCell(tpx, tpy, ch, `rei${trailLvl}`)
+        if (cw === 2) setCell(tpx + 1, tpy, '', `rei${trailLvl}`)
       }
-      // CN one row below
-      if (fadeIn > 0.5) {
-        const cW = vw(MATANE_CN)
-        const cX = Math.floor((COLS - cW) / 2)
-        const cOffs = coffs(MATANE_CN)
-        for (let j = 0; j < MATANE_CN.length; j++) {
-          const gx = cX + cOffs[j]!
-          const ch = MATANE_CN[j]!
-          const cw = isCJK(ch.charCodeAt(0)) ? 2 : 1
-          setCell(gx, matRow + 1, ch, 'cn')
-          if (cw === 2) setCell(gx + 1, matRow + 1, '', 'cn')
-        }
+      // Main char. Brightness peaks on landing then settles steady.
+      if (px >= 0 && px < COLS && py >= 0 && py < ROWS) {
+        const settleLvl = flyT > 0.9 ? 6 : 5
+        const lvl = cl(Math.ceil(settleLvl * fadeOutAlpha), 1, 6)
+        setCell(px, py, ch, `rei${lvl}`)
+        if (cw === 2) setCell(px + 1, py, '', `rei${lvl}`)
+      }
+    }
+
+    // CN fades in once all chars have landed
+    if (allLanded && fadeOutAlpha > 0.1) {
+      const cW = vw(MATANE_CN)
+      const cX = Math.floor((COLS - cW) / 2)
+      const cOffs = coffs(MATANE_CN)
+      for (let j = 0; j < MATANE_CN.length; j++) {
+        const gx = cX + cOffs[j]!
+        const ch = MATANE_CN[j]!
+        const cw = isCJK(ch.charCodeAt(0)) ? 2 : 1
+        setCell(gx, matRow + 1, ch, 'cn')
+        if (cw === 2) setCell(gx + 1, matRow + 1, '', 'cn')
       }
     }
   }
