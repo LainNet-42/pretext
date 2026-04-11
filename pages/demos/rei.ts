@@ -443,8 +443,10 @@ function updateLines(s: number): void {
     switch (ln.st) {
       case St.WAIT:
         if (s < ln.at) break
-        if (i === L.length - 1) { ln.st = St.FADE_IN; ln.t0 = s; ln.prog = 0 }
-        else { ln.st = St.TYPE; ln.t0 = s; ln.typed = 0; ln.cnTyped = 0 }
+        // All lines now behave the same — type → hold → fade_out → gone.
+        // (No more "final fade-in-and-permanently-hold" case; SHOW is a
+        // trap state for that old flow and would leave the line stuck.)
+        ln.st = St.TYPE; ln.t0 = s; ln.typed = 0; ln.cnTyped = 0
         break
       case St.TYPE: {
         const e = s - ln.t0
