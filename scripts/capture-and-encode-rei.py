@@ -246,11 +246,24 @@ def encode():
     cmd += [
         "-filter_complex", filter_complex,
         "-map", "0:v", "-map", "[aout]",
-        "-c:v", "libx264", "-preset", "slow", "-crf", "14", "-pix_fmt", "yuv420p",
-        "-tune", "animation",
-        "-b:v", "50M", "-maxrate", "60M", "-bufsize", "120M",
+        # Max-quality text encode:
+        #   libx264 slower preset (more rate-distortion search)
+        #   CRF 8 (visually near-lossless, much stronger than 14)
+        #   tune stillimage — optimises for sharp detail preservation
+        #     instead of motion smoothing (the old `animation` tune
+        #     was softening the ASCII glyphs between frames)
+        #   drop -b:v/maxrate/bufsize (redundant + conflict with CRF)
+        #   yuv420p kept for universal compatibility (Safari/iOS/etc.)
+        #   aq-mode 3 + psy-rd for sharper text against dark bg
+        "-c:v", "libx264",
+        "-preset", "slower",
+        "-crf", "8",
+        "-tune", "stillimage",
+        "-pix_fmt", "yuv420p",
         "-profile:v", "high", "-level", "5.1",
+        "-x264-params", "aq-mode=3:psy-rd=1.4,0.2:deblock=-1,-1",
         "-c:a", "aac", "-b:a", "320k",
+        "-movflags", "+faststart",
         "-t", str(TOTAL_S),
         out_path,
     ]
