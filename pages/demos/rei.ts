@@ -393,6 +393,10 @@ for (const c of '╔═╗║╚╝┌┐└┘─│╭╮╰╯├┤┬┴┼
 for (const c of '\u307E\u305F\u306D\u3002(\u518D\u89C1)') ALL_CHARS.add(c)  // またね。(再见)
 // Jackpot rotating ray glyphs
 for (const c of '\u2571\u2572\u2500\u2502\u2550\u2551\u254B') ALL_CHARS.add(c) // ╱ ╲ ─ │ ═ ║ ╋
+// Payout popup text
+for (const c of '+0123456789BONUSJACKPOTx') ALL_CHARS.add(c)
+// Display indicators
+for (const c of 'CRP\u25CB\u25CF') ALL_CHARS.add(c)  // CR P ○ ●
 for (const line of SCRIPT) for (const c of line) ALL_CHARS.add(c)
 for (const line of SCRIPT_CN) for (const c of line) ALL_CHARS.add(c)
 for (const m of CHAT) { for (const c of m.text) ALL_CHARS.add(c); for (const c of m.cn) ALL_CHARS.add(c) }
@@ -484,6 +488,58 @@ function updateLines(s: number): void {
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; ch: string; kind: 'sparkle' | 'coin' }
 const particles: Particle[] = []
 const MAX_PARTICLES = 100
+
+// ---- Balatro-style payout popups ----
+//
+// When the jackpot lands, short scoring texts rise from the reels and
+// fade upward — matching Balatro's chip / mult popups. Each popup is a
+// short string plus a rising velocity and a fading life. They chain in
+// a cascade so the total reads like a building payout.
+interface Payout {
+  text: string
+  x: number          // top-left column (not centered)
+  y: number
+  vy: number
+  life: number       // 0..1
+  cls: string        // class prefix (gb / jp / sk)
+}
+const payouts: Payout[] = []
+const MAX_PAYOUTS = 20
+
+function spawnPayout(x: number, y: number, text: string, cls = 'gb'): void {
+  if (payouts.length >= MAX_PAYOUTS) return
+  payouts.push({ text, x, y, vy: -0.14, life: 1, cls })
+}
+
+function updatePayouts(): void {
+  for (let i = payouts.length - 1; i >= 0; i--) {
+    const p = payouts[i]!
+    p.y += p.vy
+    p.vy *= 0.985
+    p.life -= 0.012
+    if (p.life <= 0) payouts.splice(i, 1)
+  }
+}
+
+// Cascade of payout popups that fire during the jackpot window.
+// Each reel gets a "+100", then a centered "JACKPOT" text, then a
+// growing "x3" multiplier at the end. Rebuilt fresh on loop reset.
+interface PayoutCue { at: number; fired: boolean; fire: () => void }
+const payoutCascade: PayoutCue[] = [
+  { at: 19.2, fired: false, fire: () => spawnPayout(REEL_COLS[0]! + 3, REEL_TOP + REEL_H - 1, '+100') },
+  { at: 19.6, fired: false, fire: () => spawnPayout(REEL_COLS[1]! + 3, REEL_TOP + REEL_H - 1, '+200') },
+  { at: 20.0, fired: false, fire: () => spawnPayout(REEL_COLS[2]! + 3, REEL_TOP + REEL_H - 1, '+500') },
+  { at: 20.5, fired: false, fire: () => spawnPayout(REEL_COLS[0]! + 2, REEL_TOP + REEL_H - 1, '+100') },
+  { at: 20.8, fired: false, fire: () => spawnPayout(REEL_COLS[1]! + 2, REEL_TOP + REEL_H - 1, '+300') },
+  { at: 21.1, fired: false, fire: () => spawnPayout(REEL_COLS[2]! + 2, REEL_TOP + REEL_H - 1, '+700') },
+  { at: 21.4, fired: false, fire: () => spawnPayout(Math.floor(COLS / 2) - 3, REEL_TOP - 2, 'BONUS') },
+  { at: 21.8, fired: false, fire: () => spawnPayout(Math.floor(COLS / 2) - 1, REEL_TOP - 4, 'x3') },
+]
+
+function resetPayoutCascade(): void {
+  payouts.length = 0
+  for (const c of payoutCascade) c.fired = false
+}
 
 function spawnSparkle(cx: number, cy: number, count: number): void {
   if (particles.length + count > MAX_PARTICLES) return
@@ -1030,6 +1086,7 @@ function frame(now: number): void {
   if (s > TOTAL) {
     startT = now
     particles.length = 0
+    resetPayoutCascade()
     tickets.length = 0
     ticketsScheduled = false
     reelTape[0] = []; reelTape[1] = []; reelTape[2] = []
@@ -1050,7 +1107,20 @@ function frame(now: number): void {
   updateLines(s)
   resolvePullState(s)
   updateParticles()
+  updatePayouts()
   updateTickets(s)
+
+  // ---- Balatro-style payout cascade during the jackpot window ----
+  //
+  // Spawn a sequence of rising score popups from the 3 reels + a big
+  // "JACKPOT" popup + final "x3" multiplier, each gated once.
+  {
+    type Cascade = { at: number; fired?: boolean; fire: () => void }
+    const list = payoutCascade as Cascade[]
+    for (const c of list) {
+      if (!c.fired && s >= c.at) { c.fire(); c.fired = true }
+    }
+  }
 
   // Schedule tickets after jackpot
   if (!ticketsScheduled && s >= TICKETS_START) {
@@ -1215,21 +1285,35 @@ function frame(now: number): void {
     setCell(DISPLAY_RIGHT, DISPLAY_TOP + 1, '│', `${framePrefix}1`)
 
     const dispCenter = Math.floor((DISPLAY_LEFT + DISPLAY_RIGHT) / 2)
-    if (isJackpotGlow) {
-      // small display shows WIN
-      const msg = 'W I N !'
-      const mx = dispCenter - Math.floor(msg.length / 2)
-      for (let i = 0; i < msg.length; i++) {
+    // Credit counter ramps 0 → 1800 across the jackpot window, matching
+    // the rising payout popups. Before jackpot, shows 0000.
+    let credits = 0
+    if (s >= JACKPOT_TIME) {
+      const cT = Math.min(1, (s - JACKPOT_TIME) / (JACKPOT_END - JACKPOT_TIME - 0.2))
+      credits = Math.floor(cT * 1800)
+      if (credits > 1800) credits = 1800
+    }
+    const score = `CR ${String(credits).padStart(4, '0')}`
+    // Pull counter: show spin progress as filled/empty dots
+    let completed = 0
+    for (const ph of PULL_PHASES) if (s >= ph.stopTimes[2]!) completed++
+    const dots = ['\u25CB', '\u25CB', '\u25CB']  // ○ ○ ○
+    for (let i = 0; i < completed && i < 3; i++) dots[i] = '\u25CF'  // ●
+    const pull = `P ${dots.join('')}`
+    const combined = `${score}  ${pull}`
+    const mx = dispCenter - Math.floor(combined.length / 2)
+    const baseCls = isJackpotGlow ? 'jp' : 'sp'
+    for (let i = 0; i < combined.length; i++) {
+      const ch = combined[i]!
+      // Highlight the credits digits brighter when the counter is live
+      let lvl = 2
+      if (isJackpotGlow) {
         const pulse = 0.7 + 0.3 * Math.sin(s * 8 + i * 0.6)
-        const lvl = cl(Math.ceil(pulse * 3), 1, 3)
-        setCell(mx + i, DISPLAY_TOP + 1, msg[i]!, `jp${lvl}`)
+        lvl = cl(Math.ceil(pulse * 3), 1, 3)
+      } else if (i >= 3 && i <= 6) {
+        lvl = 3  // bright digits
       }
-    } else {
-      const score = 'CREDITS: 00'
-      const mx = dispCenter - Math.floor(score.length / 2)
-      for (let i = 0; i < score.length; i++) {
-        setCell(mx + i, DISPLAY_TOP + 1, score[i]!, 'sp2')
-      }
+      setCell(mx + i, DISPLAY_TOP + 1, ch, `${baseCls}${lvl}`)
     }
 
     // ---- Lever (right side) ----
@@ -1541,6 +1625,19 @@ function frame(now: number): void {
     if (gx < 0 || gx >= COLS || gy < 0 || gy >= ROWS) continue
     const lvl = cl(Math.ceil(p.life * 3), 1, 3)
     setCell(gx, gy, p.ch, `sk${lvl}`)
+  }
+
+  // ---- Payout popups (Balatro-style rising score text) ----
+  for (const p of payouts) {
+    const px = Math.round(p.x), py = Math.round(p.y)
+    const lvl = cl(Math.ceil(p.life * 3), 1, 3)
+    for (let j = 0; j < p.text.length; j++) {
+      const ch = p.text[j]!
+      if (ch === ' ') continue
+      const gx = px + j
+      if (gx < 0 || gx >= COLS || py < 0 || py >= ROWS) continue
+      setCell(gx, py, ch, `${p.cls}${lvl}`)
+    }
   }
 
   // ---- Egg (ticket → morph → egg → crack → burst → gone) ----
