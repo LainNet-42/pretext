@@ -7,113 +7,178 @@
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     :root{
-      --bg:    #0a0a0c;
-      --ink:   #ebe8e0;
-      --mute:  #6b6f78;
-      --faint: #2e313a;
+      --bg:     #0d0b08;
+      --ink:    #f2ede0;
+      --mute:   #7a756b;
+      --faint:  #3a3630;
+      --accent: #c9b68e;
     }
     html,body{
       background:var(--bg);
       color:var(--ink);
       -webkit-font-smoothing:antialiased;
       text-rendering:optimizeLegibility;
+    }
+    body{
       font-family:"Hiragino Mincho ProN","Yu Mincho","Songti SC","Source Han Serif",Georgia,serif;
       font-feature-settings:"palt" 1;
+      min-height:100vh;
+      overflow-x:hidden;
     }
-    body{min-height:100vh}
 
-    /* ---------- tiny fixed wordmark ---------- */
+    /* fixed header */
     .mark{
-      position:fixed;top:28px;left:32px;
+      position:fixed;top:32px;left:40px;
       font:11px/1 "SF Mono","Cascadia Code",ui-monospace,monospace;
-      letter-spacing:0.36em;
+      letter-spacing:0.38em;
       color:var(--mute);
       text-transform:uppercase;
-      z-index:10;
+      z-index:20;
+      mix-blend-mode:difference;
     }
     .mark a{color:inherit;text-decoration:none}
     .ix{
-      position:fixed;top:28px;right:32px;
+      position:fixed;top:32px;right:40px;
       font:11px/1 "SF Mono","Cascadia Code",ui-monospace,monospace;
       letter-spacing:0.22em;
-      color:var(--faint);
+      color:var(--mute);
       text-transform:uppercase;
-      z-index:10;
+      z-index:20;
+      mix-blend-mode:difference;
     }
-    .ix a{color:var(--mute);text-decoration:none}
-    .ix a:hover{color:var(--ink)}
+    .ix a{color:inherit;text-decoration:none;border-bottom:1px solid transparent}
+    .ix a:hover{border-bottom-color:currentColor}
 
-    /* ---------- one work = one viewport band ---------- */
+    /* ============================================================
+       One work = one full viewport, split 50/50
+       ============================================================ */
     .work{
       min-height:100vh;
-      display:flex;
+      padding:80px 72px 64px;
+      display:grid;
+      grid-template-columns:1fr 1fr;
       align-items:center;
-      justify-content:center;
-      padding:96px 32px 64px;
+      column-gap:48px;
+      border-bottom:1px solid var(--faint);
+      position:relative;
     }
-    .work + .work{
-      padding-top:32px;
-    }
-    .inner{
+    .work:last-of-type{border-bottom:none}
+
+    /* ---- left column: huge kanji + meta ---- */
+    .text{
       display:flex;
       flex-direction:column;
-      align-items:center;
-      gap:28px;
-      max-width:min(calc(100vh * 0.56), 92vw);
-      width:100%;
+      justify-content:center;
+      max-width:560px;
+      margin-left:auto;
+      padding-right:40px;
     }
-
-    /* tiny label above the video — "I · 水葬" */
     .label{
       font:11px/1 "SF Mono","Cascadia Code",ui-monospace,monospace;
+      letter-spacing:0.40em;
+      color:var(--mute);
+      text-transform:uppercase;
+      margin-bottom:40px;
+      display:flex;align-items:center;gap:18px;
+    }
+    .label .n{color:var(--accent)}
+    .label .line{flex:1;height:1px;background:var(--faint)}
+    .kanji{
+      font:200 min(26vh, 240px)/0.92
+           "Hiragino Mincho ProN","Yu Mincho","Songti SC","Source Han Serif",Georgia,serif;
+      letter-spacing:0.02em;
+      color:var(--ink);
+      margin:0;
+      padding:0;
+      white-space:nowrap;
+    }
+    .romaji{
+      margin-top:24px;
+      font:11px/1.8 "SF Mono","Cascadia Code",ui-monospace,monospace;
       letter-spacing:0.36em;
       color:var(--mute);
       text-transform:uppercase;
-      align-self:flex-start;
+    }
+    .rule{
+      width:72px;height:1px;
+      background:var(--mute);
+      margin:32px 0 24px;
+      opacity:0.45;
+    }
+    .blurb{
+      font:14px/2 "Hiragino Mincho ProN","Yu Mincho","Songti SC","Source Han Serif",Georgia,serif;
+      color:var(--ink);
+      max-width:30ch;
+      opacity:0.82;
+    }
+    .meta{
+      margin-top:40px;
+      display:flex;gap:26px;
+      font:10px/1 "SF Mono","Cascadia Code",ui-monospace,monospace;
+      letter-spacing:0.22em;
+      color:var(--mute);
+      text-transform:uppercase;
+    }
+    .meta span + span{position:relative;padding-left:26px}
+    .meta span + span::before{
+      content:"";
+      position:absolute;left:0;top:50%;
+      width:14px;height:1px;background:var(--faint);
+      transform:translateY(-50%);
     }
 
-    /* video, floating, no frame */
+    /* ---- right column: video ---- */
     .frame{
+      justify-self:center;
       position:relative;
-      width:100%;
+      height:min(82vh, 820px);
       aspect-ratio:9/16;
       cursor:pointer;
       background:#000;
+      box-shadow:
+        0 60px 120px -40px rgba(0,0,0,0.85),
+        0 20px 40px -20px rgba(0,0,0,0.6);
+      transition:transform .6s cubic-bezier(.2,.7,.2,1);
     }
+    .frame:hover{transform:translateY(-4px)}
     .frame video{
       position:absolute;inset:0;
       width:100%;height:100%;
       object-fit:cover;
       display:block;
     }
+    .frame .caption{
+      position:absolute;
+      left:0;right:0;bottom:-36px;
+      text-align:center;
+      font:10px/1 "SF Mono","Cascadia Code",ui-monospace,monospace;
+      letter-spacing:0.32em;
+      color:var(--mute);
+      text-transform:uppercase;
+      transition:color .3s, transform .3s;
+    }
+    .frame:hover .caption{color:var(--ink);transform:translateY(2px)}
 
-    /* subtle title below the video */
-    .title{
-      align-self:flex-start;
-      display:flex;align-items:baseline;gap:18px;
-      width:100%;
-      padding-top:4px;
+    /* reverse on second work — video on left, text on right */
+    .work.flip .text{
+      margin-left:0;margin-right:auto;
+      padding-right:0;padding-left:40px;
+      order:2;
     }
-    .title h2{
-      font:300 42px/1 "Hiragino Mincho ProN","Yu Mincho","Songti SC","Source Han Serif",Georgia,serif;
-      letter-spacing:0.08em;
-      color:var(--ink);
-    }
-    .title .year{
-      font:11px/1 "SF Mono","Cascadia Code",ui-monospace,monospace;
+    .work.flip .frame{order:1}
+
+    /* ---- footer ---- */
+    .foot{
+      padding:40px 72px 56px;
+      display:flex;align-items:center;justify-content:space-between;
+      font:10px/1 "SF Mono","Cascadia Code",ui-monospace,monospace;
       letter-spacing:0.22em;
       color:var(--faint);
+      text-transform:uppercase;
+      border-top:1px solid var(--faint);
     }
 
-    .blurb{
-      align-self:flex-start;
-      font:13px/1.95 "Hiragino Mincho ProN","Yu Mincho","Songti SC","Source Han Serif",Georgia,serif;
-      color:var(--mute);
-      max-width:36ch;
-      white-space:pre-line;
-    }
-
-    /* ---------- fullscreen player ---------- */
+    /* ---- fullscreen player ---- */
     #player{
       position:fixed;inset:0;
       background:#000;
@@ -123,27 +188,46 @@
     }
     #player.on{display:flex}
     #player video{
-      max-width:100vw;max-height:100vh;
       height:100vh;width:auto;
+      max-width:100vw;
       background:#000;
     }
     #player .close{
-      position:fixed;top:22px;right:26px;
+      position:fixed;top:24px;right:30px;
       font:11px/1 "SF Mono",monospace;
       letter-spacing:0.26em;
-      color:var(--mute);
+      color:rgba(255,255,255,0.55);
       text-transform:uppercase;
       cursor:pointer;
-      background:none;border:none;padding:10px 12px;
+      background:none;border:none;padding:10px 14px;
     }
-    #player .close:hover{color:var(--ink)}
+    #player .close:hover{color:#fff}
 
-    @media (max-width:720px){
-      .mark{top:18px;left:20px}
-      .ix{top:18px;right:20px}
-      .work{padding:72px 20px 48px}
-      .inner{max-width:100%}
-      .title h2{font-size:32px}
+    /* ---- responsive: stack on narrow ---- */
+    @media (max-width:900px){
+      .work{
+        grid-template-columns:1fr;
+        padding:100px 28px 72px;
+        row-gap:56px;
+        min-height:auto;
+      }
+      .text{
+        max-width:100%;
+        padding:0;
+        margin:0;
+        order:2 !important;
+      }
+      .frame{
+        order:1 !important;
+        height:auto;
+        width:min(320px,80vw);
+      }
+      .kanji{font-size:min(22vw, 180px)}
+      .work.flip .text{order:2 !important}
+      .work.flip .frame{order:1 !important}
+      .mark{top:20px;left:22px}
+      .ix{top:20px;right:22px}
+      .foot{padding:32px 22px}
     }
   </style>
 </head>
@@ -153,32 +237,50 @@
   <div class="ix"><a href="/demos">demos &rarr;</a></div>
 
   <section class="work">
-    <div class="inner">
-      <div class="label">I</div>
-      <a class="frame" data-video="/output/final/ascii_growth.mp4" href="#">
-        <video src="/output/final/ascii_growth.mp4#t=12" muted loop playsinline preload="metadata" autoplay></video>
-      </a>
-      <div class="title">
-        <h2>水葬</h2>
-        <div class="year">2025 &nbsp;&middot;&nbsp; 22&Prime;</div>
+    <div class="text">
+      <div class="label"><span class="n">I</span><span class="line"></span><span>2025</span></div>
+      <h2 class="kanji">水葬</h2>
+      <div class="romaji">SUI &middot; SOU</div>
+      <div class="rule"></div>
+      <div class="blurb">字が水面に落ち、ひとひらの蓮を咲かせる。最後に、ひとつの灯。</div>
+      <div class="meta">
+        <span>ASCII</span>
+        <span>22 sec</span>
+        <span>vertical</span>
+        <span>voice</span>
       </div>
-      <div class="blurb">字が水面に落ち、蓮を咲かせる。</div>
     </div>
+    <a class="frame" data-video="/output/final/ascii_growth.mp4" href="#">
+      <video src="/output/final/ascii_growth.mp4#t=12" muted loop playsinline preload="metadata" autoplay></video>
+      <div class="caption">click to play with sound</div>
+    </a>
   </section>
 
-  <section class="work">
-    <div class="inner">
-      <div class="label">II</div>
-      <a class="frame" data-video="/output/final/rei_slot.mp4" href="#">
-        <video src="/output/final/rei_slot.mp4#t=18" muted loop playsinline preload="metadata" autoplay></video>
-      </a>
-      <div class="title">
-        <h2>一番賞</h2>
-        <div class="year">2026 &nbsp;&middot;&nbsp; 49&Prime;</div>
+  <section class="work flip">
+    <div class="text">
+      <div class="label"><span class="n">II</span><span class="line"></span><span>2026</span></div>
+      <h2 class="kanji">一番賞</h2>
+      <div class="romaji">ICHIBAN &middot; KUJI</div>
+      <div class="rule"></div>
+      <div class="blurb">三度のレバー、三度の祈り。「梟、梟、梟。&hairsp;いた。」</div>
+      <div class="meta">
+        <span>ASCII</span>
+        <span>49 sec</span>
+        <span>vertical</span>
+        <span>voice</span>
+        <span>BGM</span>
       </div>
-      <div class="blurb">三度のレバー、ひとつの出会い。</div>
     </div>
+    <a class="frame" data-video="/output/final/rei_slot.mp4" href="#">
+      <video src="/output/final/rei_slot.mp4#t=18" muted loop playsinline preload="metadata" autoplay></video>
+      <div class="caption">click to play with sound</div>
+    </a>
   </section>
+
+  <footer class="foot">
+    <div>&copy; PRETEXT</div>
+    <div>selected works &nbsp;&middot;&nbsp; 2025&ndash;2026</div>
+  </footer>
 
   <div id="player" role="dialog" aria-modal="true">
     <button class="close">close &nbsp;&times;</button>
