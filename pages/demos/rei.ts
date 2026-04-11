@@ -294,7 +294,7 @@ const TIMING: [number, number, number][] = [
   [17.0, 0.2,  0.4],        // 11 梟
   [17.9, 0.2,  0.4],        // 12 梟
   [18.8, 0.3,  0.3],        // 13 梟 (jackpot)
-  [19.3, 0.3,  0.7],        // 14 いた (short hold, clears before tickets)
+  [22.3, 0.3,  0.5],        // 14 いた (after jackpot rotation finishes — the reveal)
 ]
 
 // Fall physics: horizontal force streak (SUB_ROW = LEVER_TOP_IDLE - 1, so
@@ -317,20 +317,20 @@ const PULL_PHASES: Phase[] = [
 ]
 
 const JACKPOT_TIME = 18.8           // last reel locks — jackpot moment begins
-const JACKPOT_END = 20.2            // dark-focus + light pillars fade out
-const TICKETS_START = 20.2          // tickets emerge after jackpot moment
-const MORPH_START = 22.8            // chosen ticket begins transforming to egg
-const MORPH_END = 24.8              // egg fully formed, drifted to center
-const CABINET_FADE_START = 22.8     // cabinet curtain-fades bottom→top
-const CABINET_FADE_END = 24.8
-const WOBBLE_START = 24.8           // egg wobbles in place
-const CRACK_START = 26.0            // cracks spread
-const HATCH_TIME = 26.8             // shell bursts, buddy revealed
-const CHAT_START = 27.3             // Q&A begins
-const CLOSING_START = 42.0          // buddy dims, ending text fades in
-const CLOSING_TEXT_AT = 43.0        // 「またね。」begins fading in
-const FADE_OUT_START = 46.5         // whole screen fades to black
-const TOTAL = 48.5
+const JACKPOT_END = 22.2            // rotating burst ends (3.4s total, +1s longer)
+const TICKETS_START = 20.2          // tickets emerge during jackpot moment
+const MORPH_START = 23.3            // chosen ticket begins transforming to egg
+const MORPH_END = 25.3              // egg fully formed, drifted to center
+const CABINET_FADE_START = 23.3     // cabinet curtain-fades bottom→top
+const CABINET_FADE_END = 25.3
+const WOBBLE_START = 25.3           // egg wobbles in place
+const CRACK_START = 26.5            // cracks spread
+const HATCH_TIME = 27.3             // shell bursts, buddy revealed
+const CHAT_START = 27.8             // Q&A begins
+const CLOSING_START = 42.5          // buddy dims, ending text fades in
+const CLOSING_TEXT_AT = 43.5        // 「またね。」flight begins
+const FADE_OUT_START = 47.0         // whole screen fades to black
+const TOTAL = 49.0
 
 // ============================================================
 //  Q&A chat — Rei and the hatched buddy talk. Rei's lines are
@@ -934,7 +934,7 @@ const AUDIO_CUES: Cue[] = [
   { at: 17.0, fire: () => playFromStart(REI_V[11]!), fired: false },  // 梟
   { at: 17.9, fire: () => playFromStart(REI_V[12]!), fired: false },  // 梟
   { at: 18.8, fire: () => playFromStart(REI_V[13]!), fired: false },  // 梟 (jackpot)
-  { at: 19.3, fire: () => playFromStart(REI_V[14]!), fired: false },  // いた
+  { at: 22.3, fire: () => playFromStart(REI_V[14]!), fired: false },  // いた (reveal after rotation)
 
   // --- Lever pull cha-chunks (pullStart) ---
   { at: 2.6,  fire: () => playFromStart(SFX.leverPull), fired: false },
@@ -969,18 +969,18 @@ const AUDIO_CUES: Cue[] = [
   { at: 22.6, fire: () => playFromStart(SFX.ticket), fired: false },
 
   // --- Egg crack + burst + buddy shimmer ---
-  { at: 26.0, fire: () => playFromStart(SFX.crack),   fired: false },
-  { at: 26.8, fire: () => playFromStart(SFX.burst),   fired: false },
-  { at: 27.1, fire: () => playFromStart(SFX.shimmer), fired: false },
+  { at: 26.5, fire: () => playFromStart(SFX.crack),   fired: false },
+  { at: 27.3, fire: () => playFromStart(SFX.burst),   fired: false },
+  { at: 27.6, fire: () => playFromStart(SFX.shimmer), fired: false },
 
-  // --- Q&A — Rei voice lines + buddy blips ---
-  { at: 27.3, fire: () => playFromStart(REI_V[15]!),            fired: false }, // 誰
-  { at: 29.3, fire: () => playBlip(2, 520, 'up'),                fired: false }, // blip
-  { at: 30.9, fire: () => playFromStart(REI_V[16]!),            fired: false }, // 友達
-  { at: 32.9, fire: () => playBlip(3, 480, 'up'),                fired: false }, // blip
-  { at: 34.5, fire: () => playFromStart(REI_V[17]!),            fired: false }, // ずっと
-  { at: 36.5, fire: () => playBlip(4, 500, 'wobble'),            fired: false }, // blip (happy)
-  { at: 38.1, fire: () => playFromStart(REI_V[18]!),            fired: false }, // よろしく
+  // --- Q&A — Rei voice lines + buddy blips (CHAT_START = 27.8) ---
+  { at: 27.8, fire: () => playFromStart(REI_V[15]!),            fired: false }, // 誰
+  { at: 29.8, fire: () => playBlip(2, 520, 'up'),                fired: false }, // blip
+  { at: 31.4, fire: () => playFromStart(REI_V[16]!),            fired: false }, // 友達
+  { at: 33.4, fire: () => playBlip(3, 480, 'up'),                fired: false }, // blip
+  { at: 35.0, fire: () => playFromStart(REI_V[17]!),            fired: false }, // ずっと
+  { at: 37.0, fire: () => playBlip(4, 500, 'wobble'),            fired: false }, // blip (happy)
+  { at: 38.6, fire: () => playFromStart(REI_V[18]!),            fired: false }, // よろしく
 ]
 
 // Sort by time so the per-frame scan can early-exit.
@@ -1325,24 +1325,38 @@ function frame(now: number): void {
   }
 
   // ============================================================
-  //  JACKPOT MOMENT — 2.4s rotating golden starburst
+  //  JACKPOT MOMENT — 3.4s rotating golden starburst
   // ============================================================
   //
-  // Center of the middle reel emits:
-  //   1. 8 rotating light rays that sweep outward (radial slash chars
-  //      picked by angle — ─ / | \ — creating the classic "spinning
-  //      flash" look you see on slot machines when you hit big).
-  //   2. A pulsing star burst at the very center (✹ ★ ✦ cycling).
-  //   3. A ring of co-rotating sparkle dots at multiple radii.
-  //   4. Darkened cabinet body so the golden burst really pops.
+  // Five things happen simultaneously:
+  //   1. Brief shake (0.3s) right at JACKPOT_TIME so the whole cabinet
+  //      "hits" the jackpot.
+  //   2. Gold tint wave — a circle expands from the middle reel center;
+  //      every cell the wave passes over is re-classed to gb1/gb2/gb3
+  //      based on its original brightness. By 60% into the window the
+  //      whole cabinet is gold.
+  //   3. 8 rotating radial rays (─ │ ╱ ╲) from the middle reel.
+  //   4. Pulsing star burst at the center (✹ ★ ✦ ✷).
+  //   5. Two counter-rotating sparkle rings.
+  //   6. Dark body dim under the reels for contrast.
   //
-  // No kanji — just rotating light. Envelope: 0→1 over 15%, sustain,
-  // 1→0 over last 15%.
+  // Envelope uses fixed 0.5s ramp-in and 0.7s ramp-out so the middle
+  // stays full bright across the extra second of rotation.
+  let shakeDx = 0, shakeDy = 0
+  if (s >= JACKPOT_TIME && s < JACKPOT_TIME + 0.35) {
+    const shakeT = 1 - (s - JACKPOT_TIME) / 0.35
+    const seed = Math.floor(s * 30)
+    shakeDx = Math.round((H(seed) - 0.5) * 3 * shakeT)
+    shakeDy = Math.round((H(seed + 101) - 0.5) * 1.5 * shakeT)
+  }
+
   if (s >= JACKPOT_TIME && s < JACKPOT_END) {
-    const jp = (s - JACKPOT_TIME) / (JACKPOT_END - JACKPOT_TIME)  // 0..1
-    const alpha =
-      jp < 0.15 ? jp / 0.15 :
-      jp > 0.85 ? Math.max(0, (1 - jp) / 0.15) : 1
+    const jpElapsed = s - JACKPOT_TIME
+    const jpLeft = JACKPOT_END - s
+    const jp = jpElapsed / (JACKPOT_END - JACKPOT_TIME)  // 0..1 progress
+    const rampIn = Math.min(1, jpElapsed / 0.5)
+    const rampOut = Math.min(1, jpLeft / 0.7)
+    const alpha = Math.max(0, rampIn * rampOut)
 
     // --- 1. Dark body dim below the reels ---
     const dimIntensity = jp < 0.85 ? 1 : Math.max(0, 1 - (jp - 0.85) * 6.66)
@@ -1355,6 +1369,37 @@ function frame(now: number): void {
           if (H(x * 3 + y * 5) < dimIntensity) {
             cells[y * COLS + x] = { ch: c.ch, cls: 'f1' }
           }
+        }
+      }
+    }
+
+    // --- 2. Gold tint wave ---
+    // A circle of "gold influence" expands from the middle reel center,
+    // growing from radius 0 to far beyond the screen over the first 60%
+    // of the window. Any cell within the current radius gets re-classed
+    // to gb1/gb2/gb3 based on a rough brightness reading of its
+    // original class (cabinet f1/f2/f3 → gb1/gb2/gb3).
+    if (jp > 0.1) {
+      const tintT = Math.min(1, (jp - 0.1) / 0.55)   // reach full coverage at jp=0.65
+      const tintRadius = tintT * 55
+      const ccx = REEL_COLS[1]! + REEL_W / 2
+      const ccy = REEL_TOP + REEL_H / 2
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          const c = cells[y * COLS + x]
+          if (!c) continue
+          // Already gold? skip.
+          if (c.cls.startsWith('gb') || c.cls.startsWith('rs') || c.cls.startsWith('jp')) continue
+          const dx = x - ccx
+          const dy = (y - ccy) * 1.6
+          const d = Math.sqrt(dx * dx + dy * dy)
+          if (d > tintRadius) continue
+          // Extract the brightness level from the class suffix (f1/f2/f3,
+          // sp1/sp2/sp3, lv1/lv3, tc1/tc3, etc). Default to gb2.
+          const last = c.cls[c.cls.length - 1]
+          let lvl = 2
+          if (last && last >= '1' && last <= '3') lvl = parseInt(last, 10)
+          cells[y * COLS + x] = { ch: c.ch, cls: `gb${lvl}` }
         }
       }
     }
@@ -1423,6 +1468,31 @@ function frame(now: number): void {
           const lvl = cl(Math.ceil(alpha * 3), 1, 3)
           setCell(px, py, '\u2736', `gb${lvl}`)
         }
+      }
+    }
+  }
+
+  // ---- Jackpot shake: post-process shift of cabinet cells ----
+  //
+  // Only runs during the first 0.35s of the jackpot moment. Snapshots
+  // every cell inside the cabinet bounding box, clears them, then
+  // re-lays with (shakeDx, shakeDy) offset. Outside-cabinet cells
+  // (particles etc.) stay put.
+  if (shakeDx !== 0 || shakeDy !== 0) {
+    const snapshot: Array<{ x: number; y: number; c: { ch: string; cls: string } }> = []
+    for (let y = CAB_TOP - 1; y <= CAB_BOT + 2; y++) {
+      for (let x = CAB_LEFT; x <= CAB_RIGHT; x++) {
+        const c = cells[y * COLS + x]
+        if (c) {
+          snapshot.push({ x, y, c })
+          cells[y * COLS + x] = null
+        }
+      }
+    }
+    for (const { x, y, c } of snapshot) {
+      const nx = x + shakeDx, ny = y + shakeDy
+      if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
+        cells[ny * COLS + nx] = c
       }
     }
   }
@@ -1738,13 +1808,16 @@ function frame(now: number): void {
   // the credits display so different-width stop callouts don't visibly
   // shift horizontally when one replaces the next.
   //
-  // Only the most recently started active line renders each frame, so
-  // two lines never overlap at the subtitle row.
+  // Only the LATEST line index that's non-terminal renders each frame.
+  // We walk L[] from newest to oldest and pick the first visible one;
+  // this is stable against FADE_OUT re-setting t0, which would break a
+  // max-t0 selector.
   {
     let activeLine: Line | null = null
-    for (const ln of L) {
+    for (let i = L.length - 1; i >= 0; i--) {
+      const ln = L[i]!
       if (ln.st === St.WAIT || ln.st === St.GONE) continue
-      if (!activeLine || ln.t0 > activeLine.t0) activeLine = ln
+      activeLine = ln; break
     }
     if (activeLine) {
       const ln = activeLine
