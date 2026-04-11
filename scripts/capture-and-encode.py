@@ -26,7 +26,7 @@ FPS = 60
 PAGE_URL = "http://127.0.0.1:3000/demos/lotus-fall"
 WIDTH = 540
 HEIGHT = 960
-DPR = 2  # deviceScaleFactor: renders at 1080x1920
+DPR = 4  # deviceScaleFactor: renders at 2160x3840 (4K vertical)
 
 
 def load_timeline():
@@ -154,8 +154,11 @@ def encode(total_ms, bgm_path=None, bgm_vol=0.3):
             f"[voice][bgm]amix=inputs=2:duration=longest:dropout_transition=2:normalize=0[aout]",
             "-map", "0:v", "-map", "[aout]",
 
-            "-c:v", "libx264", "-preset", "medium", "-crf", "14", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-b:a", "192k",
+            "-c:v", "libx264", "-preset", "slow", "-crf", "10", "-pix_fmt", "yuv420p",
+            "-tune", "animation",
+            "-b:v", "50M", "-maxrate", "60M", "-bufsize", "120M",
+            "-profile:v", "high", "-level", "5.1",
+            "-c:a", "aac", "-b:a", "320k",
             "-t", str(duration),
             output_path,
         ]
@@ -167,8 +170,11 @@ def encode(total_ms, bgm_path=None, bgm_vol=0.3):
             "-i", VOICE_PATH,
             "-filter_complex", "[1:a]apad[aout]",
             "-map", "0:v", "-map", "[aout]",
-            "-c:v", "libx264", "-preset", "medium", "-crf", "14", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-b:a", "192k",
+            "-c:v", "libx264", "-preset", "slow", "-crf", "10", "-pix_fmt", "yuv420p",
+            "-tune", "animation",
+            "-b:v", "50M", "-maxrate", "60M", "-bufsize", "120M",
+            "-profile:v", "high", "-level", "5.1",
+            "-c:a", "aac", "-b:a", "320k",
             "-t", str(duration),
             output_path,
         ]

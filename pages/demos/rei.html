@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>スロット</title>
+  <style>
+    *{box-sizing:border-box;margin:0}
+    html,body{height:100%;overflow:hidden;background:#050608;cursor:default}
+    body{display:flex;align-items:center;justify-content:center}
+    #art{text-align:center;user-select:none;-webkit-user-select:none;pointer-events:none}
+    .r{display:block;white-space:pre;font:13px/15px "SF Mono","Cascadia Code","Consolas",monospace;height:15px;letter-spacing:0.3px;user-select:none;pointer-events:none}
+
+    @media (max-width: 600px) {
+      #art{
+        --fw: calc(100vw / 352);
+        --fh: calc(100vh / 962);
+        transform: scale(min(var(--fw), var(--fh)));
+        transform-origin: center center;
+      }
+    }
+
+    /* --- subtitle (legacy white, unused now) --- */
+    .s1{color:rgba(255,255,255,0.10)}.s2{color:rgba(255,255,255,0.35)}
+    .s3{color:rgba(255,255,255,0.60)}.s4{color:rgba(255,255,255,0.80)}
+    .s5{color:rgba(255,255,255,0.94)}.s6{color:#fff}
+
+    /* --- Rei subtitle (cool pale blue gradient) --- */
+    .rei1{color:rgba(140,180,235,0.22)}
+    .rei2{color:rgba(155,195,240,0.45)}
+    .rei3{color:rgba(170,210,245,0.65)}
+    .rei4{color:rgba(185,220,250,0.82)}
+    .rei5{color:rgba(205,230,255,0.95)}
+    .rei6{color:rgba(225,240,255,1.00)}
+
+    /* --- CN subtitle --- */
+    .cn{color:rgba(180,185,200,0.55)}
+
+    /* --- cabinet frame (idle: dim gray) --- */
+    .f1{color:rgba(140,150,175,0.25)}.f2{color:rgba(165,175,200,0.55)}.f3{color:rgba(190,200,220,0.85)}
+
+    /* --- cabinet frame (jackpot glow: warm amber) --- */
+    .fj1{color:rgba(230,170,80,0.40)}.fj2{color:rgba(245,195,110,0.72)}.fj3{color:rgba(255,220,140,1.0)}
+
+    /* --- reel window bg (subtle) --- */
+    .rw{color:rgba(60,70,85,0.28)}
+
+    /* --- reel sprites (neutral white) --- */
+    .sp1{color:rgba(210,220,235,0.45)}.sp2{color:rgba(225,232,245,0.72)}.sp3{color:rgba(245,250,255,1.0)}
+
+    /* --- spin blur (cyan — motion) --- */
+    .bl1{color:rgba(100,200,235,0.35)}.bl2{color:rgba(140,220,245,0.65)}.bl3{color:rgba(170,235,255,0.92)}
+
+    /* --- lever (red) --- */
+    .lv1{color:rgba(180,60,55,0.45)}.lv2{color:rgba(210,80,65,0.78)}.lv3{color:rgba(240,100,80,1.0)}
+
+    /* --- jackpot banner (big amber) --- */
+    .jp1{color:rgba(230,170,80,0.40)}.jp2{color:rgba(245,195,110,0.72)}.jp3{color:rgba(255,220,140,1.0)}.jp4{color:#fff}
+
+    /* --- sparkles --- */
+    .sk1{color:rgba(255,240,180,0.35)}.sk2{color:rgba(255,248,200,0.70)}.sk3{color:rgba(255,255,220,1.0)}
+
+    /* --- coin particles (gold) --- */
+    .c1{color:rgba(220,180,80,0.40)}.c2{color:rgba(240,205,110,0.70)}.c3{color:rgba(255,225,140,1.0)}
+
+    /* --- celebration animals (pastel rainbow) --- */
+    .a1{color:rgba(200,120,180,0.80)}  /* pink */
+    .a2{color:rgba(120,180,220,0.80)}  /* sky */
+    .a3{color:rgba(180,220,120,0.80)}  /* green */
+    .a4{color:rgba(235,195,100,0.80)}  /* gold */
+    .a5{color:rgba(200,170,240,0.80)}  /* violet */
+    .a6{color:rgba(240,150,130,0.80)}  /* coral */
+
+    /* --- tickets (paper cream) --- */
+    .tc1{color:rgba(230,210,170,0.35)}.tc2{color:rgba(245,225,185,0.65)}.tc3{color:rgba(255,240,200,0.96)}
+
+    /* --- speech bubble (cool white, soft) --- */
+    .bu1{color:rgba(200,215,235,0.40)}.bu2{color:rgba(230,240,250,0.85)}.bu3{color:rgba(255,255,255,1.0)}
+
+    /* --- CC rainbow colors (from claude-code/src/utils/theme.ts) --- */
+    .rb0{color:rgb(235,95,87)}     /* red */
+    .rb1{color:rgb(245,139,87)}    /* orange */
+    .rb2{color:rgb(250,195,95)}    /* yellow */
+    .rb3{color:rgb(145,200,130)}   /* green */
+    .rb4{color:rgb(130,170,220)}   /* blue */
+    .rb5{color:rgb(155,130,200)}   /* indigo */
+    .rb6{color:rgb(200,130,180)}   /* violet */
+    /* shimmer variants (brighter for highlights) */
+    .rs0{color:rgb(250,155,147)}
+    .rs1{color:rgb(255,185,137)}
+    .rs2{color:rgb(255,225,155)}
+    .rs3{color:rgb(185,230,180)}
+    .rs4{color:rgb(180,205,240)}
+    .rs5{color:rgb(195,180,230)}
+    .rs6{color:rgb(230,180,210)}
+
+    /* --- golden buddy (final) --- */
+    .gb1{color:rgba(255,195,90,0.70)}.gb2{color:rgba(255,215,130,0.90)}.gb3{color:rgba(255,235,170,1.0)}
+
+    /* --- rei moment (cool white, final) --- */
+    .rm1{color:rgba(180,200,225,0.18)}.rm2{color:rgba(200,218,238,0.40)}
+    .rm3{color:rgba(220,235,250,0.65)}.rm4{color:rgba(240,248,255,0.90)}.rm5{color:#fff}
+
+    /* --- noise --- */
+    .n1{color:rgba(180,195,215,0.025)}.n2{color:rgba(180,195,215,0.05)}.n3{color:rgba(180,195,215,0.08)}
+
+    /* --- start overlay (click to unlock audio) --- */
+    #start{
+      position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+      background:rgba(5,6,8,0.72);backdrop-filter:blur(3px);
+      color:#fff;font:14px/1.4 "SF Mono","Cascadia Code","Consolas",monospace;
+      letter-spacing:1px;cursor:pointer;user-select:none;z-index:10;
+      transition:opacity 0.4s ease;
+    }
+    #start .btn{border:1px solid rgba(255,255,255,0.4);padding:14px 22px;border-radius:2px}
+    #start.gone{opacity:0;pointer-events:none}
+  </style>
+</head>
+<body>
+  <div id="art"></div>
+  <div id="start"><div class="btn">&#9654; click for sound</div></div>
+  <script type="module" src="./rei.ts"></script>
+</body>
+</html>

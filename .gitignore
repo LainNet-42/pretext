@@ -37,3 +37,19 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # video art pipeline artifacts
 output/
 worklog.md
+
+# rei demo audio assets — regenerable + copyrighted + api keys
+sound/bgm.mp3
+sound/sfx/
+sound/voice/
+sound/11labs/
+*.mp3
+*.wav
+*.m4a
+*.opus
+
+# local misc
+.claude/
+example/
+image.png
+pages/demos/assets/

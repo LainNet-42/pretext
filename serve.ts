@@ -15,6 +15,10 @@ const MIME: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.woff2': 'font/woff2',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.m4a': 'audio/mp4',
+  '.ogg': 'audio/ogg',
 }
 
 // Route map: URL path -> file path (relative to ROOT)
@@ -26,6 +30,7 @@ const routes: Record<string, string> = {
   '/demos/cigarette': 'pages/demos/cigarette.html',
   '/demos/snow': 'pages/demos/snow.html',
   '/demos/voice': 'pages/demos/voice.html',
+  '/demos/rei': 'pages/demos/rei.html',
   '/demos/fluid-ascii': 'pages/demos/fluid-ascii.html',
   '/demos/red-thread': 'pages/demos/red-thread.html',
   '/demos/showcase': 'pages/demos/showcase.html',
