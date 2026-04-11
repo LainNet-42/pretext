@@ -397,6 +397,10 @@ for (const c of '\u2571\u2572\u2500\u2502\u2550\u2551\u254B') ALL_CHARS.add(c) /
 for (const c of '+0123456789BONUSJACKPOTx') ALL_CHARS.add(c)
 // Display indicators
 for (const c of 'CRP\u25CB\u25CF') ALL_CHARS.add(c)  // CR P ○ ●
+// Cabinet decoration + labels
+for (const c of 'LUCKYFEVERBETMAXSPINPAYAUTLINES\u25B2\u2588\u2591\u25C7\u25C6\u2190\u2192SNvTICKE OUTWIRYLOSS=x') {
+  ALL_CHARS.add(c)
+}
 for (const line of SCRIPT) for (const c of line) ALL_CHARS.add(c)
 for (const line of SCRIPT_CN) for (const c of line) ALL_CHARS.add(c)
 for (const m of CHAT) { for (const c of m.text) ALL_CHARS.add(c); for (const c of m.cn) ALL_CHARS.add(c) }
@@ -1164,12 +1168,15 @@ function frame(now: number): void {
   }
 
   if (cabinetVisible) {
-    // Marquee row (just above cabinet top)
-    for (let i = 0; i <= CAB_RIGHT - CAB_LEFT; i++) {
-      const x = CAB_LEFT + i
-      const phase = (fi + i) % 4
-      if (i % 2 === 0) {
-        const ch = phase < 2 ? '●' : '○'
+    // Chasing-light marquee row (just above cabinet top). 4-phase
+    // rotation of ◉○·○ gives a neon-sign feel, not plain dots.
+    {
+      const marqueeChars = ['\u25C9', '\u25CF', '\u25CB', '\u00B7']  // ◉ ● ○ ·
+      for (let i = 0; i <= CAB_RIGHT - CAB_LEFT; i++) {
+        const x = CAB_LEFT + i
+        const phase = (fi - Math.floor(i / 2)) % 4
+        const idx = ((phase + 4) % 4)
+        const ch = marqueeChars[idx]!
         setCell(x, CAB_TOP - 1, ch, isJackpotGlow ? 'jp3' : 'sk2')
       }
     }
@@ -1204,6 +1211,45 @@ function frame(now: number): void {
         setCell(CAB_RIGHT - 1, y, '│', `${framePrefix}1`)
       }
     }
+
+    // Row of small LED lights inside the top inner frame
+    for (let x = CAB_LEFT + 3; x <= CAB_RIGHT - 3; x += 2) {
+      const litPhase = (fi + x) % 3
+      const ch = litPhase === 0 ? '\u25C9' : '\u25CB'  // ◉ / ○
+      setCell(x, CAB_TOP + 2, ch, `${framePrefix}${litPhase === 0 ? 2 : 1}`)
+    }
+
+    // --- Side vertical labels: "LUCKY" left, "FEVER" right ---
+    const leftLabel = 'LUCKY'
+    const rightLabel = 'FEVER'
+    for (let i = 0; i < leftLabel.length; i++) {
+      setCell(CAB_LEFT + 2, CAB_TOP + 8 + i, leftLabel[i]!, `${framePrefix}2`)
+    }
+    for (let i = 0; i < rightLabel.length; i++) {
+      setCell(CAB_RIGHT - 2, CAB_TOP + 8 + i, rightLabel[i]!, `${framePrefix}2`)
+    }
+
+    // --- Vertical bonus meters on both sides ---
+    // Fills as pulls complete (0/3 → 3/3)
+    let completedPulls = 0
+    for (const ph of PULL_PHASES) if (s >= ph.stopTimes[2]!) completedPulls++
+    const meterTop = CAB_TOP + 14
+    const meterBot = CAB_BOT - 5
+    const meterH = meterBot - meterTop + 1
+    const filledRows = Math.round((completedPulls / 3) * meterH)
+    for (let i = 0; i < meterH; i++) {
+      const y = meterBot - i
+      const filled = i < filledRows
+      const ch = filled ? '\u2588' : '\u2591'  // █ / ░
+      const cls = filled
+        ? (isJackpotGlow ? `jp${3}` : `${framePrefix}3`)
+        : `${framePrefix}1`
+      setCell(CAB_LEFT + 2, y, ch, cls)
+      setCell(CAB_RIGHT - 2, y, ch, cls)
+    }
+    // Meter caps
+    setCell(CAB_LEFT + 2, meterTop - 1, '\u25B2', `${framePrefix}2`)  // ▲
+    setCell(CAB_RIGHT - 2, meterTop - 1, '\u25B2', `${framePrefix}2`)
 
     // Title banner — ガチャ (Gacha)
     const title = '\u30AC\u30C1\u30E3'  // ガチャ
@@ -1332,46 +1378,116 @@ function frame(now: number): void {
     setCell(DISPLAY_RIGHT + 3, DISPLAY_TOP + 1, '●', ledPulse > 0.5 ? 'lv3' : 'lv1')
     setCell(DISPLAY_RIGHT + 4, DISPLAY_TOP + 1, 'P', `${framePrefix}1`)
 
-    // Decorative buttons below display (fake front-panel buttons)
-    const btnRow = DISPLAY_TOP + 5
-    const btnStart = DISPLAY_LEFT + 1
-    // Button A
-    setCell(btnStart, btnRow, '[', `${framePrefix}2`)
-    setCell(btnStart + 1, btnRow, '\u2500', `${framePrefix}1`)
-    setCell(btnStart + 2, btnRow, ']', `${framePrefix}2`)
-    // Button B
-    setCell(btnStart + 5, btnRow, '[', `${framePrefix}2`)
-    setCell(btnStart + 6, btnRow, '\u2500', `${framePrefix}1`)
-    setCell(btnStart + 7, btnRow, ']', `${framePrefix}2`)
-    // Button C (bigger)
-    setCell(btnStart + 10, btnRow, '[', `${framePrefix}2`)
-    setCell(btnStart + 11, btnRow, '\u2550', `${framePrefix}2`)
-    setCell(btnStart + 12, btnRow, '\u2550', `${framePrefix}2`)
-    setCell(btnStart + 13, btnRow, ']', `${framePrefix}2`)
+    // --- BET / LINES label row, just under the display ---
+    {
+      const betLine = 'BET x100  LINES 5'
+      const bx = dispCenter - Math.floor(betLine.length / 2)
+      for (let i = 0; i < betLine.length; i++) {
+        setCell(bx + i, DISPLAY_TOP + 3, betLine[i]!, `${framePrefix}2`)
+      }
+    }
 
-    // ---- PAYOUT area + ticket slot ----
+    // --- 5 control buttons in one row with text labels under them ---
+    const btnRow = DISPLAY_TOP + 5
+    const btnLabels = ['BET', 'MAX', 'SPIN', 'PAY', 'AUT']
+    const btnWidth = 5
+    const btnGap = 1
+    const btnTotalW = btnLabels.length * btnWidth + (btnLabels.length - 1) * btnGap
+    const btnStart = Math.floor((COLS - btnTotalW) / 2)
+    for (let b = 0; b < btnLabels.length; b++) {
+      const sx2 = btnStart + b * (btnWidth + btnGap)
+      // Button body: [═══]
+      setCell(sx2, btnRow, '[', `${framePrefix}2`)
+      setCell(sx2 + 1, btnRow, '\u2550', `${framePrefix}2`)
+      setCell(sx2 + 2, btnRow, '\u25CF', `${framePrefix}${(fi + b) % 2 === 0 ? 3 : 1}`)  // flashing dot
+      setCell(sx2 + 3, btnRow, '\u2550', `${framePrefix}2`)
+      setCell(sx2 + 4, btnRow, ']', `${framePrefix}2`)
+      // Label under button
+      const lbl = btnLabels[b]!
+      for (let i = 0; i < lbl.length; i++) {
+        setCell(sx2 + i + 1, btnRow + 1, lbl[i]!, `${framePrefix}1`)
+      }
+    }
+
+    // --- Pay table — single-line winning combos row ---
+    {
+      const payTable = '3\u25C7=1800  2\u25C7=300  1\u25C7=50'
+      const pbx = Math.floor((COLS - payTable.length) / 2)
+      for (let i = 0; i < payTable.length; i++) {
+        setCell(pbx + i, DISPLAY_TOP + 8, payTable[i]!, `${framePrefix}2`)
+      }
+    }
+
+    // --- PAYOUT banner ---
     const payoutText = '\u2550\u2550\u2550 PAYOUT \u2550\u2550\u2550'
     const pcol = Math.floor((COLS - payoutText.length) / 2)
     for (let i = 0; i < payoutText.length; i++) {
       setCell(pcol + i, 35, payoutText[i]!, `${framePrefix}2`)
     }
-    // Decorative brackets at payout
     setCell(pcol - 2, 35, '\u257B', `${framePrefix}1`)
     setCell(pcol + payoutText.length + 1, 35, '\u257B', `${framePrefix}1`)
 
-    // Ticket slot opening (deep dark cavity with shading)
+    // "WIN" / "LOSS" tally labels on both sides of PAYOUT
+    setCell(CAB_LEFT + 4, 35, 'W', `${framePrefix}2`)
+    setCell(CAB_LEFT + 5, 35, 'I', `${framePrefix}2`)
+    setCell(CAB_LEFT + 6, 35, 'N', `${framePrefix}2`)
+    setCell(CAB_RIGHT - 6, 35, 'T', `${framePrefix}2`)
+    setCell(CAB_RIGHT - 5, 35, 'R', `${framePrefix}2`)
+    setCell(CAB_RIGHT - 4, 35, 'Y', `${framePrefix}2`)
+
+    // Row 36 — decorative band with ◆◇◆◇ pattern
+    for (let x = CAB_LEFT + 3; x <= CAB_RIGHT - 3; x++) {
+      const ch = (x - CAB_LEFT) % 2 === 0 ? '\u25C6' : '\u25C7'
+      setCell(x, 36, ch, `${framePrefix}1`)
+    }
+
+    // Row 37 — thin horizontal rule
+    for (let x = CAB_LEFT + 2; x <= CAB_RIGHT - 2; x++) {
+      setCell(x, 37, '\u2550', `${framePrefix}1`)
+    }
+
+    // Ticket slot opening
     for (let x = SLOT_LEFT; x <= SLOT_RIGHT; x++) {
       setCell(x, SLOT_ROW - 1, '\u2584', `${framePrefix}2`)
       setCell(x, SLOT_ROW, '\u2501', isJackpotGlow ? 'jp2' : `${framePrefix}1`)
       setCell(x, SLOT_ROW + 1, '\u2580', `${framePrefix}2`)
     }
-    // Slot label arrow indicators
     setCell(SLOT_LEFT - 2, SLOT_ROW, '\u25B8', `${framePrefix}1`)
     setCell(SLOT_RIGHT + 2, SLOT_ROW, '\u25C2', `${framePrefix}1`)
+    // Label above slot
+    {
+      const lbl = 'TICKET  OUT'
+      const lx = Math.floor((COLS - lbl.length) / 2)
+      for (let i = 0; i < lbl.length; i++) {
+        setCell(lx + i, SLOT_ROW - 2, lbl[i]!, `${framePrefix}1`)
+      }
+    }
 
-    // Decorative bands on bottom panel (horizontal striping)
+    // Row 40 — "MAX WIN 9999" label
+    {
+      const lbl = '\u2190 MAX WIN 9999 \u2192'
+      const lx = Math.floor((COLS - lbl.length) / 2)
+      for (let i = 0; i < lbl.length; i++) {
+        setCell(lx + i, 40, lbl[i]!, `${framePrefix}1`)
+      }
+    }
+
+    // Row 41 — serial number + version (flavor text)
+    {
+      const lbl = 'SN 0415-7  v1.0'
+      const lx = Math.floor((COLS - lbl.length) / 2)
+      for (let i = 0; i < lbl.length; i++) {
+        setCell(lx + i, 41, lbl[i]!, `${framePrefix}1`)
+      }
+    }
+
+    // Row 42 — decorative horizontal stripes
     for (let x = CAB_LEFT + 3; x < CAB_RIGHT - 2; x++) {
-      setCell(x, CAB_BOT - 2, '\u2500', `${framePrefix}1`)
+      setCell(x, 42, '\u2500', `${framePrefix}1`)
+    }
+    // Row 43 — tiny dots pattern
+    for (let x = CAB_LEFT + 3; x < CAB_RIGHT - 2; x += 3) {
+      setCell(x, 43, '\u00B7', `${framePrefix}1`)
     }
   }
 
