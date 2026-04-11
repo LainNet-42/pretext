@@ -1454,34 +1454,20 @@ function frame(now: number): void {
     // During the jackpot moment the cabinet body is dark-dimmed, so the
     // lower half of the cabinet (rows 25-33) is mostly empty cells. We
     // run `layoutNextLine` to pour JACKPOT_QUOTE into those rows, using
-    // pretext's proper variable-width layout. The text scrolls over time
-    // (cursor resets each frame but offset shifts) so the stream reads
-    // as a wave of kanji flowing across the lower cabinet.
+    // pretext's proper variable-width layout. Text scrolls by advancing
+    // the starting segmentIndex over time.
     if (pillarAlpha > 0.05) {
       const FLOW_TOP = 25
       const FLOW_BOT = 33
-      // Approximate column→pixel conversion (13px mono, CJK ≈ 13.5px,
-      // halfwidth ≈ 7.8px; we use 8 as a simple per-col pixel budget
-      // so the layout fits visually well).
       const PX_PER_COL = 7.8
-      // Advance the cursor with time so the text scrolls. Map elapsed
-      // seconds → grapheme offset.
-      const scrollChars = Math.floor((s - JACKPOT_TIME) * 3)
-      const totalGraphemes = preparedQuote.segments.reduce(
-        (n: number, seg: { graphemes: { length: number } }) => n + seg.graphemes.length, 0)
-      const startGr = scrollChars % Math.max(1, totalGraphemes)
-      // Walk the segments to find the starting segment/grapheme index
-      let segIdx = 0, grIdx = 0, rem = startGr
-      for (let i = 0; i < preparedQuote.segments.length; i++) {
-        const segLen: number = preparedQuote.segments[i]!.graphemes.length
-        if (rem < segLen) { segIdx = i; grIdx = rem; break }
-        rem -= segLen
-      }
-      let cursor = { segmentIndex: segIdx, graphemeIndex: grIdx }
+      const segCount = preparedQuote.segments.length
+      const startSegIdx = segCount > 0
+        ? Math.floor((s - JACKPOT_TIME) * 2) % segCount
+        : 0
+      let cursor: { segmentIndex: number; graphemeIndex: number } =
+        { segmentIndex: startSegIdx, graphemeIndex: 0 }
 
       for (let y = FLOW_TOP; y <= FLOW_BOT; y++) {
-        // Compute available cols on this row (skip cells already set).
-        // Use the widest contiguous empty run as the segment.
         let bestStart = -1, bestLen = 0
         let runStart = -1, runLen = 0
         for (let x = CAB_LEFT + 2; x <= CAB_RIGHT - 2; x++) {
@@ -1496,18 +1482,15 @@ function frame(now: number): void {
         if (bestLen < 4) continue
 
         const maxWidth = bestLen * PX_PER_COL
-        const line = layoutNextLine(preparedQuote, cursor, maxWidth)
+        let line = layoutNextLine(preparedQuote, cursor, maxWidth)
         if (!line) {
-          // Wrap around to the start of the text and try once more
+          // End of text reached — wrap the cursor back to start.
           cursor = { segmentIndex: 0, graphemeIndex: 0 }
-          const retry = layoutNextLine(preparedQuote, cursor, maxWidth)
-          if (!retry) continue
-          cursor = retry.end
-          renderFlowedLine(bestStart, y, retry.text, pillarAlpha)
-        } else {
-          cursor = line.end
-          renderFlowedLine(bestStart, y, line.text, pillarAlpha)
+          line = layoutNextLine(preparedQuote, cursor, maxWidth)
+          if (!line) continue
         }
+        cursor = line.end
+        renderFlowedLine(bestStart, y, line.text, pillarAlpha)
       }
     }
 
@@ -1818,138 +1801,122 @@ function frame(now: number): void {
 
   // ---- Rei subtitle — sits above the credits display, Rei blue ----
   //
-  // All SCRIPT lines are Rei's voice, rendered in a cold blue gradient on
-  // row SUB_ROW (= 18, one row above the display frame). CN translation
-  // appears on CN_ROW (= 19) just below. The もう一度 fall→force effect
-  // is now a pure horizontal streak at the same row — no vertical drop
-  // needed since Rei's text already lives at the lever handle row.
-  for (let i = 0; i < L.length; i++) {
-    const ln = L[i]!
-    if (ln.st === St.WAIT || ln.st === St.GONE) continue
-    let txt = ''
-    if (ln.st === St.TYPE) txt = ln.text.slice(0, ln.typed)
-    else txt = ln.text
-    if (!txt) continue
-
-    const row = SUB_ROW
-    const sx = Math.floor((COLS - vw(ln.text)) / 2)
-    const offs = coffs(txt)
-    const isFall = ln.text === KITE_LINE && ln.st === St.FADE_OUT
-
-    if (isFall) {
-      // Horizontal force streak at SUB_ROW. The whole word slides right
-      // as a rigid block, picking up speed (quadratic ease-in), morphing
-      // into ═ mid-flight, with a 3-step trail echo and a ─ beam filling
-      // cells between the leading edge and the lever column. Ends in a
-      // ✹ flash at the lever handle.
-      const p = ln.prog                                     // 0..1
-      const slideT = p * p                                  // ease-in
-      const wordW = vw(ln.text)
-      const wordLeftStart = sx
-      const wordLeftEnd = LEVER_X - wordW + 1
-      const wordLeft = wordLeftStart + (wordLeftEnd - wordLeftStart) * slideT
-
-      const TRAIL_STEPS = 4
-      for (let j = 0; j < ln.text.length; j++) {
-        const ch = ln.text[j]!
-        if (ch === ' ') continue
-        const cw = isCJK(ch.charCodeAt(0)) ? 2 : 1
-        const displayCh = slideT > 0.5 ? '\u2550' : ch
-
-        // Trail echoes behind the leading edge
-        for (let k = TRAIL_STEPS; k >= 1; k--) {
-          const tp = p - k * 0.06
-          if (tp <= 0) continue
-          const tSlide = tp * tp
-          const tWordLeft = wordLeftStart + (wordLeftEnd - wordLeftStart) * tSlide
-          const tpx = Math.round(tWordLeft + offs[j]!)
-          if (tpx < 0 || tpx >= COLS) continue
-          const trailLvl = cl(5 - k, 1, 4)
-          setCell(tpx, row, displayCh, `rei${trailLvl}`)
-          if (cw === 2) setCell(tpx + 1, row, '', `rei${trailLvl}`)
-        }
-
-        // Main char (bright leading edge)
-        const px = Math.round(wordLeft + offs[j]!)
-        if (px >= 0 && px < COLS) {
-          setCell(px, row, displayCh, 'rei6')
-          if (cw === 2) setCell(px + 1, row, '', 'rei6')
-        }
-      }
-
-      // ─ energy beam between leading edge and lever column (after 30%)
-      if (slideT > 0.3) {
-        const leadX = Math.round(wordLeft + wordW - 1)
-        for (let bx = leadX + 1; bx < LEVER_X; bx++) {
-          if (cells[row * COLS + bx]) continue
-          const beamLvl = cl(Math.ceil((1 - (bx - leadX) / Math.max(1, LEVER_X - leadX)) * 4), 1, 4)
-          setCell(bx, row, '\u2500', `rei${beamLvl}`)
-        }
-      }
-
-      // Impact shockwave around lever handle (during last 20%)
-      if (p > 0.8 && particles.length < MAX_PARTICLES - 3) {
-        for (let k = 0; k < 2; k++) {
-          const a = Math.random() * Math.PI * 2
-          const sp = 0.14 + Math.random() * 0.20
-          particles.push({
-            x: LEVER_X + (Math.random() - 0.5) * 1.5,
-            y: LEVER_TOP_IDLE + (Math.random() - 0.5) * 1.5,
-            vx: Math.cos(a) * sp,
-            vy: Math.sin(a) * sp * 0.5 - 0.1,
-            life: 0.9,
-            ch: '\u2736',
-            kind: 'sparkle',
-          })
-        }
-      }
-      // Impact flash at the lever handle in the final 15%
-      if (p > 0.85) {
-        const flashLvl = cl(Math.ceil((p - 0.85) * 20), 1, 3)
-        setCell(LEVER_X, LEVER_TOP_IDLE, '\u2739', `jp${flashLvl}`)
-      }
-    } else {
-      // Normal (non-fall) render — Rei blue gradient by state
-      for (let j = 0; j < txt.length; j++) {
-        const gx = sx + offs[j]!
-        if (gx < 0 || gx >= COLS) continue
-        const ch = txt[j]!
-        const cw = isCJK(ch.charCodeAt(0)) ? 2 : 1
-        let cls = 'rei6'
-
-        if (ln.st === St.TYPE) {
-          const age = (s - ln.t0) * ln.spd - j
-          if (i === 0) cls = `rei${cl(Math.ceil(Math.min(1, Math.max(0, age)) * 2), 1, 2)}`
-          else cls = `rei${cl(Math.ceil(Math.min(1, Math.max(0, age * 1.5)) * 6), 1, 6)}`
-        } else if (ln.st === St.HOLD) {
-          cls = i === 0 ? 'rei2' : 'rei6'
-        } else if (ln.st === St.FADE_OUT) {
-          if (H(j * 31 + Math.floor(ln.prog * 8)) < ln.prog) continue
-          cls = `rei${cl(Math.ceil((1 - ln.prog) * 6), 1, 6)}`
-        } else if (ln.st === St.FADE_IN) {
-          cls = `rei${cl(Math.ceil(ln.prog * 6), 1, 6)}`
-        } else if (ln.st === St.SHOW) {
-          cls = 'rei6'
-        }
-
-        setCell(gx, row, ch, cls)
-        if (cw === 2) setCell(gx + 1, row, '', cls)
-      }
+  // All SCRIPT lines are Rei's voice, rendered steady-brightness (no
+  // per-char shimmer) on row SUB_ROW (= 18). Anchor is the CENTER of
+  // the credits display so different-width stop callouts don't visibly
+  // shift horizontally when one replaces the next.
+  //
+  // Only the most recently started active line renders each frame, so
+  // two lines never overlap at the subtitle row.
+  {
+    let activeLine: Line | null = null
+    for (const ln of L) {
+      if (ln.st === St.WAIT || ln.st === St.GONE) continue
+      if (!activeLine || ln.t0 > activeLine.t0) activeLine = ln
     }
+    if (activeLine) {
+      const ln = activeLine
+      const isFall = ln.text === KITE_LINE && ln.st === St.FADE_OUT
+      const row = SUB_ROW
+      const displayCx = Math.floor((DISPLAY_LEFT + DISPLAY_RIGHT) / 2)
+      const sx = displayCx - Math.floor(vw(ln.text) / 2)
 
-    // CN translation on CN_ROW (just above display frame).
-    // Suppressed during the fall so the streak has a clean path.
-    if (!isFall && ln.cn && ln.cnTyped > 0 && (ln.st === St.HOLD || ln.st === St.FADE_IN || ln.st === St.SHOW || ln.st === St.FADE_OUT)) {
-      const ct = ln.cn
-      const cvw = vw(ln.cn); const csx = Math.floor((COLS - cvw) / 2)
-      const co = coffs(ct)
-      for (let j = 0; j < ct.length; j++) {
-        const gx = csx + co[j]!
-        if (gx < 0 || gx >= COLS) continue
-        const ch = ct[j]!
-        const cw = isCJK(ch.charCodeAt(0)) ? 2 : 1
-        setCell(gx, CN_ROW, ch, 'cn')
-        if (cw === 2) setCell(gx + 1, CN_ROW, '', 'cn')
+      if (isFall) {
+        // Horizontal force streak — word slides right with quadratic
+        // ease-in and morphs into ═, 4-step trail echo, ─ beam between
+        // leading edge and lever, ✹ flash on impact.
+        const p = ln.prog
+        const slideT = p * p
+        const wordW = vw(ln.text)
+        const wordLeftEnd = LEVER_X - wordW + 1
+        const wordLeft = sx + (wordLeftEnd - sx) * slideT
+        const offs = coffs(ln.text)
+        const TRAIL_STEPS = 4
+        for (let j = 0; j < ln.text.length; j++) {
+          const ch = ln.text[j]!
+          if (ch === ' ') continue
+          const cw = isCJK(ch.charCodeAt(0)) ? 2 : 1
+          const displayCh = slideT > 0.5 ? '\u2550' : ch
+          for (let k = TRAIL_STEPS; k >= 1; k--) {
+            const tp = p - k * 0.06
+            if (tp <= 0) continue
+            const tSlide = tp * tp
+            const tWordLeft = sx + (wordLeftEnd - sx) * tSlide
+            const tpx = Math.round(tWordLeft + offs[j]!)
+            if (tpx < 0 || tpx >= COLS) continue
+            const trailLvl = cl(5 - k, 1, 4)
+            setCell(tpx, row, displayCh, `rei${trailLvl}`)
+            if (cw === 2) setCell(tpx + 1, row, '', `rei${trailLvl}`)
+          }
+          const px = Math.round(wordLeft + offs[j]!)
+          if (px >= 0 && px < COLS) {
+            setCell(px, row, displayCh, 'rei6')
+            if (cw === 2) setCell(px + 1, row, '', 'rei6')
+          }
+        }
+        if (slideT > 0.3) {
+          const leadX = Math.round(wordLeft + wordW - 1)
+          for (let bx = leadX + 1; bx < LEVER_X; bx++) {
+            if (cells[row * COLS + bx]) continue
+            const beamLvl = cl(Math.ceil((1 - (bx - leadX) / Math.max(1, LEVER_X - leadX)) * 4), 1, 4)
+            setCell(bx, row, '\u2500', `rei${beamLvl}`)
+          }
+        }
+        if (p > 0.8 && particles.length < MAX_PARTICLES - 3) {
+          for (let k = 0; k < 2; k++) {
+            const a = Math.random() * Math.PI * 2
+            const sp = 0.14 + Math.random() * 0.20
+            particles.push({
+              x: LEVER_X + (Math.random() - 0.5) * 1.5,
+              y: LEVER_TOP_IDLE + (Math.random() - 0.5) * 1.5,
+              vx: Math.cos(a) * sp,
+              vy: Math.sin(a) * sp * 0.5 - 0.1,
+              life: 0.9, ch: '\u2736', kind: 'sparkle',
+            })
+          }
+        }
+        if (p > 0.85) {
+          const flashLvl = cl(Math.ceil((p - 0.85) * 20), 1, 3)
+          setCell(LEVER_X, LEVER_TOP_IDLE, '\u2739', `jp${flashLvl}`)
+        }
+      } else {
+        // Normal (non-fall) render — STEADY brightness, no per-char shimmer.
+        // State only affects overall alpha: FADE_IN / FADE_OUT ramp the
+        // whole word alpha class, TYPE / HOLD / SHOW hold at full bright.
+        const txt = ln.st === St.TYPE ? ln.text.slice(0, ln.typed) : ln.text
+        if (txt.length > 0) {
+          let cls = 'rei5'
+          if (ln.st === St.FADE_OUT) {
+            cls = `rei${cl(Math.ceil((1 - ln.prog) * 5), 1, 5)}`
+          } else if (ln.st === St.FADE_IN) {
+            cls = `rei${cl(Math.ceil(ln.prog * 5), 1, 5)}`
+          }
+          const offs = coffs(txt)
+          for (let j = 0; j < txt.length; j++) {
+            const gx = sx + offs[j]!
+            if (gx < 0 || gx >= COLS) continue
+            const ch = txt[j]!
+            const cw = isCJK(ch.charCodeAt(0)) ? 2 : 1
+            setCell(gx, row, ch, cls)
+            if (cw === 2) setCell(gx + 1, row, '', cls)
+          }
+        }
+      }
+
+      // CN translation on CN_ROW — suppressed during the fall streak.
+      if (!isFall && ln.cn && ln.cnTyped > 0 && ln.st !== St.TYPE && ln.st !== St.WAIT) {
+        const ct = ln.cn
+        const cvw = vw(ct)
+        const csx = displayCx - Math.floor(cvw / 2)
+        const co = coffs(ct)
+        for (let j = 0; j < ct.length; j++) {
+          const gx = csx + co[j]!
+          if (gx < 0 || gx >= COLS) continue
+          const ch = ct[j]!
+          const cw = isCJK(ch.charCodeAt(0)) ? 2 : 1
+          setCell(gx, CN_ROW, ch, 'cn')
+          if (cw === 2) setCell(gx + 1, CN_ROW, '', 'cn')
+        }
       }
     }
   }
