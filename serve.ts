@@ -19,6 +19,9 @@ const MIME: Record<string, string> = {
   '.wav': 'audio/wav',
   '.m4a': 'audio/mp4',
   '.ogg': 'audio/ogg',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.mov': 'video/quicktime',
 }
 
 // Route map: URL path -> file path (relative to ROOT)
