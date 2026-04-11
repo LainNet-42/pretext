@@ -72,61 +72,63 @@ BLIP = [p(f"voice/buddy_blip_{i}.wav") for i in (1, 2, 3)]
 BGM = p("bgm.mp3")
 
 # (time_seconds, file_path, volume)
+# Voice boosted (>1 is OK via ffmpeg `volume` filter), SFX + BGM cut.
+VOX = 1.45
 CUES = [
     # Rei voice — slot phase
-    (0.9,  REI_VOICE[0],  0.95),
-    (4.0,  REI_VOICE[1],  0.95),
-    (4.9,  REI_VOICE[2],  0.95),
-    (5.8,  REI_VOICE[3],  0.95),
-    (6.5,  REI_VOICE[4],  0.95),
-    (7.5,  REI_VOICE[5],  0.95),
-    (10.7, REI_VOICE[6],  0.95),
-    (11.6, REI_VOICE[7],  0.95),
-    (12.5, REI_VOICE[8],  0.95),
-    (13.2, REI_VOICE[9],  0.95),
-    (14.3, REI_VOICE[10], 0.95),
-    (17.0, REI_VOICE[11], 0.95),
-    (17.9, REI_VOICE[12], 0.95),
-    (18.8, REI_VOICE[13], 0.95),
-    (22.3, REI_VOICE[14], 0.95),
-    # Lever / spin / stop
-    (2.6,  SFX["lever_pull"], 0.55),
-    (9.3,  SFX["lever_pull"], 0.55),
-    (16.2, SFX["lever_pull"], 0.55),
-    (2.7,  SFX["reel_spin"],  0.30),
-    (9.4,  SFX["reel_spin"],  0.30),
-    (16.3, SFX["reel_spin"],  0.30),
-    (4.0,  SFX["reel_stop"],  0.40),
-    (4.9,  SFX["reel_stop"],  0.40),
-    (5.8,  SFX["reel_stop"],  0.40),
-    (10.7, SFX["reel_stop"],  0.40),
-    (11.6, SFX["reel_stop"],  0.40),
-    (12.5, SFX["reel_stop"],  0.40),
-    (17.0, SFX["reel_stop"],  0.40),
-    (17.9, SFX["reel_stop"],  0.40),
-    (18.8, SFX["reel_stop"],  0.40),
+    (0.9,  REI_VOICE[0],  VOX),
+    (4.0,  REI_VOICE[1],  VOX),
+    (4.9,  REI_VOICE[2],  VOX),
+    (5.8,  REI_VOICE[3],  VOX),
+    (6.5,  REI_VOICE[4],  VOX),
+    (7.5,  REI_VOICE[5],  VOX),
+    (10.7, REI_VOICE[6],  VOX),
+    (11.6, REI_VOICE[7],  VOX),
+    (12.5, REI_VOICE[8],  VOX),
+    (13.2, REI_VOICE[9],  VOX),
+    (14.3, REI_VOICE[10], VOX),
+    (17.0, REI_VOICE[11], VOX),
+    (17.9, REI_VOICE[12], VOX),
+    (18.8, REI_VOICE[13], VOX),
+    (22.3, REI_VOICE[14], VOX),
+    # Lever / spin / stop — all pushed down
+    (2.6,  SFX["lever_pull"], 0.30),
+    (9.3,  SFX["lever_pull"], 0.30),
+    (16.2, SFX["lever_pull"], 0.30),
+    (2.7,  SFX["reel_spin"],  0.15),
+    (9.4,  SFX["reel_spin"],  0.15),
+    (16.3, SFX["reel_spin"],  0.15),
+    (4.0,  SFX["reel_stop"],  0.20),
+    (4.9,  SFX["reel_stop"],  0.20),
+    (5.8,  SFX["reel_stop"],  0.20),
+    (10.7, SFX["reel_stop"],  0.20),
+    (11.6, SFX["reel_stop"],  0.20),
+    (12.5, SFX["reel_stop"],  0.20),
+    (17.0, SFX["reel_stop"],  0.20),
+    (17.9, SFX["reel_stop"],  0.20),
+    (18.8, SFX["reel_stop"],  0.20),
     # Jackpot chime
-    (18.9, SFX["jackpot"],    0.45),
+    (18.9, SFX["jackpot"],    0.24),
     # Ticket printer
-    (20.2, SFX["ticket"],     0.35),
-    (20.7, SFX["ticket"],     0.35),
-    (21.2, SFX["ticket"],     0.35),
-    (21.8, SFX["ticket"],     0.35),
-    (22.2, SFX["ticket"],     0.35),
-    (22.6, SFX["ticket"],     0.35),
+    (20.2, SFX["ticket"],     0.16),
+    (20.7, SFX["ticket"],     0.16),
+    (21.2, SFX["ticket"],     0.16),
+    (21.8, SFX["ticket"],     0.16),
+    (22.2, SFX["ticket"],     0.16),
+    (22.6, SFX["ticket"],     0.16),
     # Egg crack + burst + shimmer
-    (26.5, SFX["crack"],      0.45),
-    (27.3, SFX["burst"],      0.50),
-    (27.6, SFX["shimmer"],    0.55),
+    (26.5, SFX["crack"],      0.22),
+    (27.3, SFX["burst"],      0.26),
+    (27.6, SFX["shimmer"],    0.28),
     # Q&A — Rei voice
-    (27.8, REI_VOICE[15], 0.95),
-    (31.4, REI_VOICE[16], 0.95),
-    (35.0, REI_VOICE[17], 0.95),
-    (38.6, REI_VOICE[18], 0.95),
+    (27.8, REI_VOICE[15], VOX),
+    (31.4, REI_VOICE[16], VOX),
+    (35.0, REI_VOICE[17], VOX),
+    (38.6, REI_VOICE[18], VOX),
     # Buddy blips
-    (29.8, BLIP[0], 0.85),
-    (33.4, BLIP[1], 0.85),
-    (37.0, BLIP[2], 0.85),
+    (29.8, BLIP[0], 0.50),
+    (33.4, BLIP[1], 0.50),
+    (37.0, BLIP[2], 0.50),
 ]
 
 
@@ -208,7 +210,7 @@ def build_audio_mix():
     # Input 1 is BGM.
     inputs.append(BGM)
     # Trim BGM to video duration, apply volume
-    filters.append(f"[1:a]atrim=0:{TOTAL_S},volume=0.22[bgm]")
+    filters.append(f"[1:a]atrim=0:{TOTAL_S},volume=0.12[bgm]")
     labels.append("[bgm]")
 
     for idx, (t, src, vol) in enumerate(CUES):
