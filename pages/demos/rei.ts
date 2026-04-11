@@ -14,43 +14,50 @@ import { prepareWithSegments } from '../../src/layout.ts'
 const COLS = 45
 const ROWS = 64
 
+// Layout shifted down by +4 rows so the cabinet reads visually centered
+// on a phone (viewport ≈ 960px → 64 rows). Previous layout had CAB_TOP=4
+// and CAB_BOT=44 which left 4 rows empty above and 20 below, pulling the
+// whole machine toward the top of the screen.
+
 // Rei's voice is the display of the machine. JP line sits right above
 // the credits display, CN one row below (just above the display frame).
-const SUB_ROW = 18
-const CN_ROW = 19
+const SUB_ROW = 22
+const CN_ROW = 23
 
 // Cabinet
 const CAB_LEFT = 0
 const CAB_RIGHT = 44
-const CAB_TOP = 4
-const CAB_BOT = 44
+const CAB_TOP = 8
+const CAB_BOT = 48
 
 // Reels: 3 side-by-side, each 12 cols × 5 rows
 // Shared vertical dividers between reels
 const REEL_W = 12
 const REEL_H = 5
-const REEL_TOP = 12  // row of first content line
+const REEL_TOP = 16  // row of first content line
 const REEL_COLS = [4, 16, 28]  // left col of each reel content
 
 // Display
-const DISPLAY_TOP = 21
+const DISPLAY_TOP = 25
 const DISPLAY_LEFT = 12
 const DISPLAY_RIGHT = 32
 
 // Lever (right side, inside cabinet)
 const LEVER_X = 39
-const LEVER_TOP_IDLE = 19
-const LEVER_TOP_PULLED = 26
-const LEVER_BASE = 30
+const LEVER_TOP_IDLE = 23
+const LEVER_TOP_PULLED = 30
+const LEVER_BASE = 34
 
 // Ticket slot (bottom of cabinet)
 const SLOT_LEFT = 13
 const SLOT_RIGHT = 31
-const SLOT_ROW = 38  // horizontal opening
+const SLOT_ROW = 42  // horizontal opening
 
-// Ticket chain area (below cabinet)
-const TICKET_FIRST_ROW = 46   // first ticket top
-const TICKET_COL = 17          // left col of tickets (centered)
+// Ticket chain area (below cabinet) — tighter spacing + fewer so the
+// full chain still fits within the 64-row grid after the +4 shift.
+const TICKET_FIRST_ROW = 50  // first ticket top
+const TICKET_ROW_SPACING = 3 // was 4; row-tighter so 6 tickets fit
+const TICKET_COL = 17        // left col of tickets (centered)
 
 // ============================================================
 //  SPRITES (1:1 from claude-code/src/buddy/sprites.ts)
@@ -601,7 +608,7 @@ function updateTickets(s: number): void {
     const elapsed = s - t.emergeAt
     t.progress = Math.min(1, elapsed / 0.7)
     const targetX = TICKET_COL
-    const targetY = TICKET_FIRST_ROW + t.targetIdx * 4
+    const targetY = TICKET_FIRST_ROW + t.targetIdx * TICKET_ROW_SPACING
     const ease = t.progress < 0.5 ? 2 * t.progress * t.progress : 1 - Math.pow(-2 * t.progress + 2, 2) / 2
     t.x = ((SLOT_LEFT + SLOT_RIGHT) / 2 - 4) + (targetX - ((SLOT_LEFT + SLOT_RIGHT) / 2 - 4)) * ease
     t.y = SLOT_ROW + (targetY - SLOT_ROW) * ease
@@ -869,6 +876,13 @@ for (let r = 0; r < ROWS; r++) {
   const el = document.createElement('div'); el.className = 'r'; art.appendChild(el); rowEls.push(el)
 }
 
+// Pre-allocated cell buffer so we don't `new Array(COLS*ROWS).fill(null)`
+// every frame (that was triggering GC jank + grabbing input focus).
+const cells: Array<{ ch: string; cls: string } | null> = new Array(COLS * ROWS).fill(null)
+function clearCells(): void {
+  for (let i = 0; i < cells.length; i++) cells[i] = null
+}
+
 // ============================================================
 //  AUDIO  (cue-driven)
 // ============================================================
@@ -1106,7 +1120,12 @@ function frame(now: number): void {
 
   fireAudioCues(s)
 
+  // Fast frame index (12.5 Hz at 80ms per step). Use this for things
+  // that genuinely need per-frame movement (reel spin tape).
   const fi = Math.floor(ms / 80)
+  // Slow flicker index for decorative flashing so the eye doesn't hurt
+  // (~2.5 Hz). Marquee / LED / button dots all use this.
+  const fiSlow = Math.floor(ms / 400)
 
   updateLines(s)
   resolvePullState(s)
@@ -1161,20 +1180,21 @@ function frame(now: number): void {
   const eggPose = getEggPose(s)
 
   // ---- build cell map ----
-  const cells: Array<{ ch: string; cls: string } | null> = new Array(COLS * ROWS).fill(null)
+  // Reuse the pre-allocated `cells` buffer to avoid per-frame GC jank.
+  clearCells()
   function setCell(x: number, y: number, ch: string, cls: string): void {
     if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return
     cells[y * COLS + x] = { ch, cls }
   }
 
   if (cabinetVisible) {
-    // Chasing-light marquee row (just above cabinet top). 4-phase
-    // rotation of ◉○·○ gives a neon-sign feel, not plain dots.
+    // Chasing-light marquee row (just above cabinet top). Slow 4-phase
+    // rotation of ◉●○· using fiSlow (~2.5 Hz) — not eye-hurting.
     {
       const marqueeChars = ['\u25C9', '\u25CF', '\u25CB', '\u00B7']  // ◉ ● ○ ·
       for (let i = 0; i <= CAB_RIGHT - CAB_LEFT; i++) {
         const x = CAB_LEFT + i
-        const phase = (fi - Math.floor(i / 2)) % 4
+        const phase = (fiSlow - Math.floor(i / 4)) % 4
         const idx = ((phase + 4) % 4)
         const ch = marqueeChars[idx]!
         setCell(x, CAB_TOP - 1, ch, isJackpotGlow ? 'jp3' : 'sk2')
@@ -1212,9 +1232,9 @@ function frame(now: number): void {
       }
     }
 
-    // Row of small LED lights inside the top inner frame
+    // Row of small LED lights inside the top inner frame (slow flicker)
     for (let x = CAB_LEFT + 3; x <= CAB_RIGHT - 3; x += 2) {
-      const litPhase = (fi + x) % 3
+      const litPhase = (fiSlow + x) % 3
       const ch = litPhase === 0 ? '\u25C9' : '\u25CB'  // ◉ / ○
       setCell(x, CAB_TOP + 2, ch, `${framePrefix}${litPhase === 0 ? 2 : 1}`)
     }
@@ -1256,7 +1276,7 @@ function frame(now: number): void {
     const titleW = 6  // 3 CJK chars × 2 cols each
     const tx = Math.floor((COLS - titleW) / 2)
     for (let i = 0; i < title.length; i++) {
-      const pulse = isJackpotGlow ? (0.6 + 0.4 * Math.sin(s * 5 + i)) : 1
+      const pulse = isJackpotGlow ? (0.6 + 0.4 * Math.sin(s * 2.5 + i)) : 1
       const lvl = cl(Math.ceil(pulse * 3), 1, 3)
       setCell(tx + i * 2, CAB_TOP + 3, title[i]!, `${isJackpotGlow ? 'jp' : framePrefix}${lvl}`)
     }
@@ -1354,7 +1374,7 @@ function frame(now: number): void {
       // Highlight the credits digits brighter when the counter is live
       let lvl = 2
       if (isJackpotGlow) {
-        const pulse = 0.7 + 0.3 * Math.sin(s * 8 + i * 0.6)
+        const pulse = 0.75 + 0.25 * Math.sin(s * 3 + i * 0.5)
         lvl = cl(Math.ceil(pulse * 3), 1, 3)
       } else if (i >= 3 && i <= 6) {
         lvl = 3  // bright digits
@@ -1374,7 +1394,7 @@ function frame(now: number): void {
     }
 
     // Power LED (pulses near display)
-    const ledPulse = Math.sin(s * 3) * 0.5 + 0.5
+    const ledPulse = Math.sin(s * 1.5) * 0.5 + 0.5
     setCell(DISPLAY_RIGHT + 3, DISPLAY_TOP + 1, '●', ledPulse > 0.5 ? 'lv3' : 'lv1')
     setCell(DISPLAY_RIGHT + 4, DISPLAY_TOP + 1, 'P', `${framePrefix}1`)
 
@@ -1399,7 +1419,7 @@ function frame(now: number): void {
       // Button body: [═══]
       setCell(sx2, btnRow, '[', `${framePrefix}2`)
       setCell(sx2 + 1, btnRow, '\u2550', `${framePrefix}2`)
-      setCell(sx2 + 2, btnRow, '\u25CF', `${framePrefix}${(fi + b) % 2 === 0 ? 3 : 1}`)  // flashing dot
+      setCell(sx2 + 2, btnRow, '\u25CF', `${framePrefix}${(fiSlow + b) % 2 === 0 ? 3 : 1}`)  // slow flashing dot
       setCell(sx2 + 3, btnRow, '\u2550', `${framePrefix}2`)
       setCell(sx2 + 4, btnRow, ']', `${framePrefix}2`)
       // Label under button
@@ -1418,32 +1438,39 @@ function frame(now: number): void {
       }
     }
 
-    // --- PAYOUT banner ---
+    // --- PAYOUT banner row (was hard-coded row 35, now derived) ---
+    const payoutRow = SLOT_ROW - 3          // one row above the slot opening (was 35)
+    const bandRow   = payoutRow + 1         // ◆◇ pattern
+    const ruleRow   = payoutRow + 2         // thin rule
+    const maxWinRow = SLOT_ROW + 2          // was 40
+    const serialRow = SLOT_ROW + 3          // was 41
+    const stripeRow = SLOT_ROW + 4          // was 42
+    const dotsRow   = SLOT_ROW + 5          // was 43
+
     const payoutText = '\u2550\u2550\u2550 PAYOUT \u2550\u2550\u2550'
     const pcol = Math.floor((COLS - payoutText.length) / 2)
     for (let i = 0; i < payoutText.length; i++) {
-      setCell(pcol + i, 35, payoutText[i]!, `${framePrefix}2`)
+      setCell(pcol + i, payoutRow, payoutText[i]!, `${framePrefix}2`)
     }
-    setCell(pcol - 2, 35, '\u257B', `${framePrefix}1`)
-    setCell(pcol + payoutText.length + 1, 35, '\u257B', `${framePrefix}1`)
+    setCell(pcol - 2, payoutRow, '\u257B', `${framePrefix}1`)
+    setCell(pcol + payoutText.length + 1, payoutRow, '\u257B', `${framePrefix}1`)
 
-    // "WIN" / "LOSS" tally labels on both sides of PAYOUT
-    setCell(CAB_LEFT + 4, 35, 'W', `${framePrefix}2`)
-    setCell(CAB_LEFT + 5, 35, 'I', `${framePrefix}2`)
-    setCell(CAB_LEFT + 6, 35, 'N', `${framePrefix}2`)
-    setCell(CAB_RIGHT - 6, 35, 'T', `${framePrefix}2`)
-    setCell(CAB_RIGHT - 5, 35, 'R', `${framePrefix}2`)
-    setCell(CAB_RIGHT - 4, 35, 'Y', `${framePrefix}2`)
+    // "WIN" / "TRY" tally labels on both sides of PAYOUT
+    setCell(CAB_LEFT + 4, payoutRow, 'W', `${framePrefix}2`)
+    setCell(CAB_LEFT + 5, payoutRow, 'I', `${framePrefix}2`)
+    setCell(CAB_LEFT + 6, payoutRow, 'N', `${framePrefix}2`)
+    setCell(CAB_RIGHT - 6, payoutRow, 'T', `${framePrefix}2`)
+    setCell(CAB_RIGHT - 5, payoutRow, 'R', `${framePrefix}2`)
+    setCell(CAB_RIGHT - 4, payoutRow, 'Y', `${framePrefix}2`)
 
-    // Row 36 — decorative band with ◆◇◆◇ pattern
+    // Decorative ◆◇◆◇ band
     for (let x = CAB_LEFT + 3; x <= CAB_RIGHT - 3; x++) {
       const ch = (x - CAB_LEFT) % 2 === 0 ? '\u25C6' : '\u25C7'
-      setCell(x, 36, ch, `${framePrefix}1`)
+      setCell(x, bandRow, ch, `${framePrefix}1`)
     }
-
-    // Row 37 — thin horizontal rule
+    // Thin horizontal rule
     for (let x = CAB_LEFT + 2; x <= CAB_RIGHT - 2; x++) {
-      setCell(x, 37, '\u2550', `${framePrefix}1`)
+      setCell(x, ruleRow, '\u2550', `${framePrefix}1`)
     }
 
     // Ticket slot opening
@@ -1454,40 +1481,32 @@ function frame(now: number): void {
     }
     setCell(SLOT_LEFT - 2, SLOT_ROW, '\u25B8', `${framePrefix}1`)
     setCell(SLOT_RIGHT + 2, SLOT_ROW, '\u25C2', `${framePrefix}1`)
-    // Label above slot
-    {
-      const lbl = 'TICKET  OUT'
-      const lx = Math.floor((COLS - lbl.length) / 2)
-      for (let i = 0; i < lbl.length; i++) {
-        setCell(lx + i, SLOT_ROW - 2, lbl[i]!, `${framePrefix}1`)
-      }
-    }
 
-    // Row 40 — "MAX WIN 9999" label
+    // "MAX WIN 9999" label
     {
       const lbl = '\u2190 MAX WIN 9999 \u2192'
       const lx = Math.floor((COLS - lbl.length) / 2)
       for (let i = 0; i < lbl.length; i++) {
-        setCell(lx + i, 40, lbl[i]!, `${framePrefix}1`)
+        setCell(lx + i, maxWinRow, lbl[i]!, `${framePrefix}1`)
       }
     }
 
-    // Row 41 — serial number + version (flavor text)
+    // Serial number + version (flavor text)
     {
       const lbl = 'SN 0415-7  v1.0'
       const lx = Math.floor((COLS - lbl.length) / 2)
       for (let i = 0; i < lbl.length; i++) {
-        setCell(lx + i, 41, lbl[i]!, `${framePrefix}1`)
+        setCell(lx + i, serialRow, lbl[i]!, `${framePrefix}1`)
       }
     }
 
-    // Row 42 — decorative horizontal stripes
+    // Horizontal stripes
     for (let x = CAB_LEFT + 3; x < CAB_RIGHT - 2; x++) {
-      setCell(x, 42, '\u2500', `${framePrefix}1`)
+      setCell(x, stripeRow, '\u2500', `${framePrefix}1`)
     }
-    // Row 43 — tiny dots pattern
+    // Tiny dots pattern
     for (let x = CAB_LEFT + 3; x < CAB_RIGHT - 2; x += 3) {
-      setCell(x, 43, '\u00B7', `${framePrefix}1`)
+      setCell(x, dotsRow, '\u00B7', `${framePrefix}1`)
     }
   }
 
