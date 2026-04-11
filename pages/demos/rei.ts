@@ -1,4 +1,4 @@
-import { prepareWithSegments } from '../../src/layout.ts'
+import { prepareWithSegments, layoutNextLine } from '../../src/layout.ts'
 
 // ============================================================
 //  スロット — Slot Machine + Rei
@@ -302,6 +302,25 @@ const TIMING: [number, number, number][] = [
 const FALL_DUR = 0.8
 const KITE_LINE = KITE
 
+// Kanji stream that flows upward through the 3 light pillars during the
+// jackpot moment. Each char is one CJK glyph (2 cols wide). Ordered so
+// repeats look organic as the stream scrolls.
+const LUCKY_KANJI = [
+  '\u68DF',  // 梟 owl
+  '\u5149',  // 光 light
+  '\u91D1',  // 金 gold
+  '\u904B',  // 運 luck
+  '\u68DF',  // 梟
+  '\u5B9D',  // 宝 treasure
+  '\u5149',  // 光
+  '\u795D',  // 祝 celebration
+]
+
+// A short Rei quote that the pretext library flows through the cabinet
+// body during the sustained jackpot burst — real pretext usage, text
+// wraps through arbitrary-width segments (the empty display-area row).
+const JACKPOT_QUOTE = '\u6765\u3066\u3002\u68DF\u3002\u5149\u3002\u68DF\u3002\u3044\u305F\u3002\u68DF\u3002\u5149\u3002\u68DF\u3002\u3044\u305F\u3002'  // 来て。梟。光。梟。いた。...
+
 interface Phase {
   pullStart: number
   pullEnd: number
@@ -327,8 +346,10 @@ const WOBBLE_START = 24.8           // egg wobbles in place
 const CRACK_START = 26.0            // cracks spread
 const HATCH_TIME = 26.8             // shell bursts, buddy revealed
 const CHAT_START = 27.3             // Q&A begins
-const FADE_OUT_START = 42.0
-const TOTAL = 44.5
+const CLOSING_START = 42.0          // buddy dims, ending text fades in
+const CLOSING_TEXT_AT = 43.0        // 「またね。」begins fading in
+const FADE_OUT_START = 46.5         // whole screen fades to black
+const TOTAL = 48.5
 
 // ============================================================
 //  Q&A chat — Rei and the hatched buddy talk. Rei's lines are
@@ -388,10 +409,17 @@ for (const e of EYES) ALL_CHARS.add(e)
 for (const c of '╔═╗║╚╝┌┐└┘─│╭╮╰╯├┤┬┴┼ *+·✦✹×◉@°oO@.,\'`[]?●○◆◇░▒▓█★-_/\\|v^VJACKPOTSLOTCLAUDEPETSINSERTCOINCREDITSPAYOUT!()><~=\u2736\u25C8\u2550\u2551\u2503\u2502\u2580\u2584\u2582\u2501\u257B\u25B8\u25C2\u266A\u266B\u266C') {
   ALL_CHARS.add(c)
 }
+for (const c of LUCKY_KANJI) ALL_CHARS.add(c)
+for (const c of JACKPOT_QUOTE) ALL_CHARS.add(c)
+for (const c of '\u307E\u305F\u306D\u3002(\u518D\u89C1)') ALL_CHARS.add(c)  // またね。(再见)
 for (const line of SCRIPT) for (const c of line) ALL_CHARS.add(c)
 for (const line of SCRIPT_CN) for (const c of line) ALL_CHARS.add(c)
 for (const m of CHAT) { for (const c of m.text) ALL_CHARS.add(c); for (const c of m.cn) ALL_CHARS.add(c) }
 for (const c of ALL_CHARS) prepareWithSegments(c, FONT)
+
+// Prepare the jackpot quote for real pretext flow (layoutNextLine reads
+// this to fit the text into variable-width segments each frame).
+const preparedQuote = prepareWithSegments(JACKPOT_QUOTE, FONT)
 
 // ---- CJK ----
 function isCJK(c: number): boolean {
@@ -1319,27 +1347,46 @@ function frame(now: number): void {
     }
   }
 
+  // Helper: render a pretext-laid-out text line at a given (sx, y) with
+  // golden coloring, respecting CJK double-width.
+  function renderFlowedLine(sx: number, y: number, txt: string, alpha: number): void {
+    const offs = coffs(txt)
+    for (let j = 0; j < txt.length; j++) {
+      const gx = sx + offs[j]!
+      if (gx < 0 || gx >= COLS) continue
+      const ch = txt[j]!
+      if (ch === ' ') continue
+      const cw = isCJK(ch.charCodeAt(0)) ? 2 : 1
+      const lvl = cl(Math.ceil(alpha * 3), 1, 3)
+      setCell(gx, y, ch, `gb${lvl}`)
+      if (cw === 2) setCell(gx + 1, y, '', `gb${lvl}`)
+    }
+  }
+
   // ============================================================
-  //  JACKPOT MOMENT — quiet focus, not arcade
+  //  JACKPOT MOMENT — 2.4s sustained golden burst
   // ============================================================
   //
-  // Dark-focus everything except the 3 owl sprites in the reel windows,
-  // then raise 3 golden vertical light pillars from each reel up through
-  // the marquee, with a soft halo around the center reel. Ends cleanly
-  // before the tickets emerge.
-  const flashAlpha = 0
+  // Three things happen simultaneously for 2.4s:
+  //   1. Dark-focus — cabinet body below the reels dims to f1 so the
+  //      reels "pop" golden against a dark body.
+  //   2. Light pillars (top) — 3 vertical golden columns rise from each
+  //      reel up through the marquee. Inside each pillar, pretext flows
+  //      a stream of lucky kanji (光梟金運…) that scrolls UPWARD,
+  //      showing real pretext-library text layout.
+  //   3. Expanding halo — a golden ring around the center reel grows
+  //      outward, filling with faint dots, giving the sustained
+  //      "爽感" burst Rei-style without arcade-y flash.
   if (s >= JACKPOT_TIME && s < JACKPOT_END) {
     const jp = (s - JACKPOT_TIME) / (JACKPOT_END - JACKPOT_TIME)  // 0..1
-    // Dim pass: every cabinet cell below the reel window gets pushed to
-    // the dimmest shade, so the reels "pop" against the dark body.
-    const dimIntensity = jp < 0.8 ? 1 : Math.max(0, 1 - (jp - 0.8) * 5)
+
+    // --- 1. Dark body dim ---
+    const dimIntensity = jp < 0.85 ? 1 : Math.max(0, 1 - (jp - 0.85) * 6.66)
     if (dimIntensity > 0) {
       for (let y = REEL_TOP + REEL_H; y <= CAB_BOT + 2; y++) {
         for (let x = CAB_LEFT; x <= CAB_RIGHT; x++) {
           const c = cells[y * COLS + x]
           if (!c) continue
-          // Keep the display frame visible but dim; skip cells already
-          // in a dark state.
           if (c.cls.startsWith('f1') || c.cls === 'rw') continue
           if (H(x * 3 + y * 5) < dimIntensity) {
             cells[y * COLS + x] = { ch: c.ch, cls: 'f1' }
@@ -1348,40 +1395,134 @@ function frame(now: number): void {
       }
     }
 
-    // Rising golden light pillars — one per reel column.
-    // Pillar grows from reel top upward through the marquee.
-    const pillarGrow = Math.min(1, jp / 0.5)  // reaches full height by 50%
-    const pillarFade = jp > 0.75 ? Math.max(0, 1 - (jp - 0.75) * 4) : 1
-    const pillarAlpha = pillarGrow * pillarFade
+    // --- 2. Kanji-stream light pillars ---
+    // Use pretext's layoutNextLine to flow a ribbon of lucky kanji
+    // through the narrow reel column. The word flow scrolls upward
+    // as time advances so the pillar feels alive.
+    //
+    // The pillar alpha ramps up fast (0 → 1 in 0.15 of the window),
+    // holds at full for 70% of the time, then fades out.
+    const pillarGrow =
+      jp < 0.15 ? jp / 0.15 :
+      jp > 0.85 ? Math.max(0, (1 - jp) / 0.15) : 1
+    const pillarAlpha = pillarGrow
     if (pillarAlpha > 0.05) {
-      const PILLAR_TOP_Y = CAB_TOP - 1                    // marquee row
-      const PILLAR_BOT_Y = REEL_TOP - 2                   // just above reel window top border
-      const pillarChars = ['\u2502', '\u2551', '\u2503']   // │ ║ ┃
+      const PILLAR_TOP_Y = CAB_TOP - 1
+      const PILLAR_BOT_Y = REEL_TOP - 2
+      const pillarH = PILLAR_BOT_Y - PILLAR_TOP_Y + 1
+      const scrollOffset = Math.floor((s - JACKPOT_TIME) * 8)  // rows/sec upward
+
       for (let r = 0; r < 3; r++) {
-        const cx = REEL_COLS[r]! + Math.floor(REEL_W / 2) // center col of each reel
-        const bottom = PILLAR_BOT_Y
-        const top = Math.round(PILLAR_BOT_Y - (PILLAR_BOT_Y - PILLAR_TOP_Y) * pillarGrow)
-        for (let y = top; y <= bottom; y++) {
+        const cx = REEL_COLS[r]! + Math.floor(REEL_W / 2)
+
+        // Each reel gets 2 adjacent columns (cx-1, cx) for the pillar
+        // body + its kanji stream.
+        const leftCol = cx - 1
+
+        // Pick a kanji for each row using a deterministic stream,
+        // offset by scrollOffset so the text appears to flow upward.
+        for (let yRel = 0; yRel < pillarH; yRel++) {
+          const y = PILLAR_BOT_Y - yRel
           if (y < 0 || y >= ROWS) continue
-          // Brightness fades toward the top of the pillar
-          const heightT = (bottom - y) / Math.max(1, bottom - PILLAR_TOP_Y)
+          const streamIdx = (yRel + scrollOffset + r * 3) % LUCKY_KANJI.length
+          const kch = LUCKY_KANJI[streamIdx]!
+          // Brightness fades toward the top so the stream looks like
+          // light rising and dissipating.
+          const heightT = yRel / pillarH
           const lvl = cl(Math.ceil((1 - heightT * 0.5) * pillarAlpha * 3), 1, 3)
-          const ch = pillarChars[Math.floor(fi * 0.5 + y) % pillarChars.length]!
-          setCell(cx, y, ch, `gb${lvl}`)
-          // Occasional sparkle along the pillar edges
-          if (H(cx * 13 + y * 17 + fi * 3) < 0.08 * pillarAlpha) {
-            const ex = cx + (fi % 2 === 0 ? -1 : 1)
-            if (ex >= CAB_LEFT && ex <= CAB_RIGHT) {
-              setCell(ex, y, '\u00B7', `gb${lvl}`)
-            }
-          }
+          // The kanji occupies 2 cols (leftCol, leftCol+1)
+          setCell(leftCol, y, kch, `gb${lvl}`)
+          setCell(leftCol + 1, y, '', `gb${lvl}`)
+        }
+
+        // Thin light shaft beside the kanji column, for extra glow
+        for (let yRel = 0; yRel < pillarH; yRel++) {
+          const y = PILLAR_BOT_Y - yRel
+          if (y < 0 || y >= ROWS) continue
+          const shaftX = cx + 1
+          if (shaftX >= CAB_RIGHT) continue
+          if (cells[y * COLS + shaftX]) continue
+          const heightT = yRel / pillarH
+          const lvl = cl(Math.ceil((1 - heightT * 0.6) * pillarAlpha * 2), 1, 2)
+          setCell(shaftX, y, '\u2502', `gb${lvl}`)
         }
       }
+    }
 
-      // Halo around the center reel — faint dots in a radius
+    // --- 2b. Pretext text-flow through the bottom cabinet rows ---
+    //
+    // During the jackpot moment the cabinet body is dark-dimmed, so the
+    // lower half of the cabinet (rows 25-33) is mostly empty cells. We
+    // run `layoutNextLine` to pour JACKPOT_QUOTE into those rows, using
+    // pretext's proper variable-width layout. The text scrolls over time
+    // (cursor resets each frame but offset shifts) so the stream reads
+    // as a wave of kanji flowing across the lower cabinet.
+    if (pillarAlpha > 0.05) {
+      const FLOW_TOP = 25
+      const FLOW_BOT = 33
+      // Approximate column→pixel conversion (13px mono, CJK ≈ 13.5px,
+      // halfwidth ≈ 7.8px; we use 8 as a simple per-col pixel budget
+      // so the layout fits visually well).
+      const PX_PER_COL = 7.8
+      // Advance the cursor with time so the text scrolls. Map elapsed
+      // seconds → grapheme offset.
+      const scrollChars = Math.floor((s - JACKPOT_TIME) * 3)
+      const totalGraphemes = preparedQuote.segments.reduce(
+        (n: number, seg: { graphemes: { length: number } }) => n + seg.graphemes.length, 0)
+      const startGr = scrollChars % Math.max(1, totalGraphemes)
+      // Walk the segments to find the starting segment/grapheme index
+      let segIdx = 0, grIdx = 0, rem = startGr
+      for (let i = 0; i < preparedQuote.segments.length; i++) {
+        const segLen: number = preparedQuote.segments[i]!.graphemes.length
+        if (rem < segLen) { segIdx = i; grIdx = rem; break }
+        rem -= segLen
+      }
+      let cursor = { segmentIndex: segIdx, graphemeIndex: grIdx }
+
+      for (let y = FLOW_TOP; y <= FLOW_BOT; y++) {
+        // Compute available cols on this row (skip cells already set).
+        // Use the widest contiguous empty run as the segment.
+        let bestStart = -1, bestLen = 0
+        let runStart = -1, runLen = 0
+        for (let x = CAB_LEFT + 2; x <= CAB_RIGHT - 2; x++) {
+          if (!cells[y * COLS + x]) {
+            if (runStart === -1) runStart = x
+            runLen++
+            if (runLen > bestLen) { bestLen = runLen; bestStart = runStart }
+          } else {
+            runStart = -1; runLen = 0
+          }
+        }
+        if (bestLen < 4) continue
+
+        const maxWidth = bestLen * PX_PER_COL
+        const line = layoutNextLine(preparedQuote, cursor, maxWidth)
+        if (!line) {
+          // Wrap around to the start of the text and try once more
+          cursor = { segmentIndex: 0, graphemeIndex: 0 }
+          const retry = layoutNextLine(preparedQuote, cursor, maxWidth)
+          if (!retry) continue
+          cursor = retry.end
+          renderFlowedLine(bestStart, y, retry.text, pillarAlpha)
+        } else {
+          cursor = line.end
+          renderFlowedLine(bestStart, y, line.text, pillarAlpha)
+        }
+      }
+    }
+
+    // --- 3. Expanding golden halo around the middle reel ---
+    // The halo radius grows from 0 to MAX_HALO over the first 60% of
+    // the window, then holds, then fades.
+    const haloMaxR = 9
+    const haloRadius =
+      jp < 0.4 ? (jp / 0.4) * haloMaxR :
+      jp < 0.85 ? haloMaxR :
+      haloMaxR * Math.max(0, 1 - (jp - 0.85) * 6.66)
+    if (haloRadius > 1) {
       const hcx = REEL_COLS[1]! + REEL_W / 2
       const hcy = REEL_TOP + REEL_H / 2
-      const haloR = 6
+      const haloR = Math.ceil(haloRadius)
       for (let dy = -haloR; dy <= haloR; dy++) {
         for (let dx = -haloR; dx <= haloR; dx++) {
           const px = Math.round(hcx + dx)
@@ -1389,9 +1530,11 @@ function frame(now: number): void {
           if (px < 0 || px >= COLS || py < 0 || py >= ROWS) continue
           if (cells[py * COLS + px]) continue
           const d = Math.sqrt(dx * dx + (dy * 1.6) ** 2)
-          if (d > haloR) continue
-          const intensity = (1 - d / haloR) * pillarAlpha
-          if (H(px * 31 + py * 17 + fi * 7) < intensity * 0.12) {
+          if (d > haloRadius) continue
+          // Dots thicker near the ring edge (0.7-1.0 of radius)
+          const edgeDist = Math.abs(d / haloRadius - 0.85)
+          const intensity = Math.max(0, 1 - edgeDist * 4) * pillarAlpha
+          if (H(px * 31 + py * 17 + fi * 7) < intensity * 0.35) {
             const lvl = cl(Math.ceil(intensity * 3), 1, 3)
             setCell(px, py, '\u00B7', `gb${lvl}`)
           }
@@ -1536,7 +1679,11 @@ function frame(now: number): void {
   }
 
   // ---- Buddy appears in place of egg (fixed position, idle-animated) ----
-  const buddyVisible = s >= HATCH_TIME
+  const buddyVisible = s >= HATCH_TIME && s < FADE_OUT_START
+  // During the closing window the buddy dims gradually.
+  const closingDim = s > CLOSING_START
+    ? Math.max(0.25, 1 - (s - CLOSING_START) / (FADE_OUT_START - CLOSING_START) * 0.75)
+    : 1
   if (buddyVisible) {
     const frame = getIdleFrame('owl', s)
     const sprite = renderSprite('owl', frame)
@@ -1550,12 +1697,16 @@ function frame(now: number): void {
         if (revealT < 1 && H(dx * 11 + dy * 13) > revealT) continue
         const shimmerSeed = H(dx * 11 + dy * 19 + fi * 7)
         const cIdx = Math.floor(((dx + dy + fi * 0.3) / 2) % 7)
-        const cls = shimmerSeed < 0.12 ? `rs${cIdx}` : 'gb3'
+        // During the closing, the buddy dims down toward gb1.
+        const dimLvl = closingDim < 1 ? cl(Math.ceil(closingDim * 3), 1, 3) : 3
+        const cls = shimmerSeed < 0.12 ? `rs${cIdx}` : `gb${dimLvl}`
         setCell(BUDDY_X + dx, BUDDY_Y + dy, ch, cls)
       }
     }
-    // Name label under the buddy (like CC companion shows species name)
-    if (revealT >= 1) {
+    // Name label under the buddy — only shown for a brief window right
+    // after hatching, not during the Q&A chat phase (so the dialogue
+    // scene stays clean).
+    if (revealT >= 1 && s < CHAT_START) {
       const label = 'owl'
       const lx = BUDDY_X + Math.floor((BUDDY_W - label.length) / 2)
       for (let i = 0; i < label.length; i++) {
@@ -1618,6 +1769,48 @@ function frame(now: number): void {
           const cw = isCJK(ch.charCodeAt(0)) ? 2 : 1
           setCell(cgx, cnY, ch, 'cn')
           if (cw === 2) setCell(cgx + 1, cnY, '', 'cn')
+        }
+      }
+    }
+  }
+
+  // ---- Closing ending: 「またね。」fades in, then everything fades out ----
+  //
+  // After the Q&A wraps up, the buddy dims (handled in the buddy render
+  // above), and a single centered line — "またね。" / (再见。) — fades in
+  // a few rows below the buddy in Rei blue, holds, then everything
+  // gently fades to black.
+  if (s >= CLOSING_TEXT_AT && s < TOTAL) {
+    const MATANE = '\u307E\u305F\u306D\u3002'          // またね。
+    const MATANE_CN = '(\u518D\u89C1)'                  // (再见)
+    const fadeIn = Math.min(1, (s - CLOSING_TEXT_AT) / 1.5)
+    const hold = s < FADE_OUT_START ? 1 : Math.max(0, 1 - (s - FADE_OUT_START) / (TOTAL - FADE_OUT_START))
+    const alpha = fadeIn * hold
+    if (alpha > 0.02) {
+      const lvl = cl(Math.ceil(alpha * 6), 1, 6)
+      // JP line centered 4 rows below the buddy
+      const matRow = BUDDY_Y + BUDDY_H + 4
+      const mW = vw(MATANE)
+      const mX = Math.floor((COLS - mW) / 2)
+      const mOffs = coffs(MATANE)
+      for (let j = 0; j < MATANE.length; j++) {
+        const gx = mX + mOffs[j]!
+        const ch = MATANE[j]!
+        const cw = isCJK(ch.charCodeAt(0)) ? 2 : 1
+        setCell(gx, matRow, ch, `rei${lvl}`)
+        if (cw === 2) setCell(gx + 1, matRow, '', `rei${lvl}`)
+      }
+      // CN one row below
+      if (fadeIn > 0.5) {
+        const cW = vw(MATANE_CN)
+        const cX = Math.floor((COLS - cW) / 2)
+        const cOffs = coffs(MATANE_CN)
+        for (let j = 0; j < MATANE_CN.length; j++) {
+          const gx = cX + cOffs[j]!
+          const ch = MATANE_CN[j]!
+          const cw = isCJK(ch.charCodeAt(0)) ? 2 : 1
+          setCell(gx, matRow + 1, ch, 'cn')
+          if (cw === 2) setCell(gx + 1, matRow + 1, '', 'cn')
         }
       }
     }
@@ -1767,22 +1960,17 @@ function frame(now: number): void {
 
   for (let gy = 0; gy < ROWS; gy++) {
     if (gfade <= 0) { rowEls[gy]!.innerHTML = ''; continue }
+    // Ambient noise: on during the slot phase, off once the scene
+    // transitions to the quiet dialogue so the Q&A feels clean.
+    const noiseOn = s < CABINET_FADE_START
     let html = ''
     for (let gx = 0; gx < COLS; gx++) {
       const c = cells[gy * COLS + gx]
       if (c) {
         if (c.ch === '') continue
-        // apply flash: randomly upgrade cells to bright class during jackpot flash
-        if (flashAlpha > 0 && H(gx * 11 + gy * 17 + fi * 7) < flashAlpha * 0.6) {
-          html += `<span class="jp3">${esc(c.ch)}</span>`
-        } else {
-          html += `<span class="${c.cls}">${esc(c.ch)}</span>`
-        }
+        html += `<span class="${c.cls}">${esc(c.ch)}</span>`
       } else {
-        // flash fills empty cells with sparkle
-        if (flashAlpha > 0.5 && H(gx * 11 + gy * 17 + fi * 7) < flashAlpha * 0.3) {
-          html += `<span class="sk3">*</span>`
-        } else if (H(gx * 73 + gy * 137 + fi * 13) < 0.006) {
+        if (noiseOn && H(gx * 73 + gy * 137 + fi * 13) < 0.006) {
           html += `<span class="n1">·</span>`
         } else {
           html += ' '
