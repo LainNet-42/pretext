@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>雪人</title>
+  <style>
+    *{box-sizing:border-box;margin:0}
+    html,body{height:100%;overflow:hidden;background:#0a0e18}
+    body{display:flex;align-items:center;justify-content:center;cursor:default}
+    #art{text-align:center;user-select:none;-webkit-user-select:none;pointer-events:none}
+    .r{display:block;white-space:pre;font:13px/15px "SF Mono","Cascadia Code","Consolas",monospace;height:15px;letter-spacing:0.3px;user-select:none;pointer-events:none}
+
+    @media (max-width: 600px) {
+      #art{
+        --fw: calc(100vw / 352);
+        --fh: calc(100vh / 962);
+        transform: scale(min(var(--fw), var(--fh)));
+        transform-origin: center center;
+      }
+    }
+
+    /* subtitle text (warm white, typing in) */
+    .s1{color:rgba(255,250,240,0.12)}.s2{color:rgba(255,250,240,0.30)}
+    .s3{color:rgba(255,250,240,0.52)}.s4{color:rgba(255,250,240,0.72)}
+    .s5{color:rgba(255,250,240,0.88)}.s6{color:rgba(255,250,240,1.00)}
+
+    /* falling text trails */
+    .ft1{color:rgba(220,230,245,0.90)}.ft2{color:rgba(200,215,235,0.72)}
+    .ft3{color:rgba(180,200,225,0.50)}.ft4{color:rgba(160,185,215,0.32)}
+
+    /* snow particles */
+    .sn1{color:rgba(200,215,235,0.18)}.sn2{color:rgba(210,225,240,0.30)}
+    .sn3{color:rgba(220,235,248,0.48)}.sn4{color:rgba(235,242,252,0.65)}
+    .sn5{color:rgba(245,248,255,0.82)}.sn6{color:rgba(255,255,255,0.95)}
+
+    /* snowman body (bright white) */
+    .sb1{color:rgba(230,240,250,0.55)}.sb2{color:rgba(240,245,252,0.75)}
+    .sb3{color:rgba(248,250,255,0.92)}.sb4{color:rgba(255,255,255,1.00)}
+
+    /* coal eyes + mouth */
+    .coal{color:rgba(40,45,55,0.95)}
+
+    /* carrot nose */
+    .nose{color:rgba(240,140,50,0.95)}
+
+    /* scarf (warm red) */
+    .sc1{color:rgba(200,65,60,0.70)}.sc2{color:rgba(220,75,65,0.85)}.sc3{color:rgba(235,85,72,0.95)}
+
+    /* hat (dark) */
+    .hat1{color:rgba(50,55,65,0.80)}.hat2{color:rgba(65,70,80,0.90)}.hat3{color:rgba(80,85,95,0.95)}
+
+    /* ground snow */
+    .gd1{color:rgba(200,215,235,0.25)}.gd2{color:rgba(220,230,245,0.40)}.gd3{color:rgba(240,245,252,0.60)}
+
+    /* background noise */
+    .n1{color:rgba(180,200,225,0.025)}
+
+    /* CN subtitle (dimmer) */
+    .cn{color:rgba(180,195,215,0.55)}
+  </style>
+</head>
+<body>
+  <div id="art"></div>
+  <script type="module" src="./snowman.ts"></script>
+</body>
+</html>

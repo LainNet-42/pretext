@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>苹果</title>
+  <style>
+    *{box-sizing:border-box;margin:0}
+    html,body{height:100%;overflow:hidden;background:#080a06}
+    body{display:flex;align-items:center;justify-content:center;cursor:default}
+    #art{text-align:center;user-select:none;-webkit-user-select:none;pointer-events:none}
+    .r{display:block;white-space:pre;font:13px/15px "SF Mono","Cascadia Code","Consolas",monospace;height:15px;letter-spacing:0.3px;user-select:none;pointer-events:none}
+    @media (max-width: 600px) {
+      #art{
+        --fw: calc(100vw / 352);
+        --fh: calc(100vh / 962);
+        transform: scale(min(var(--fw), var(--fh)));
+        transform-origin: center center;
+      }
+    }
+    /* subtitle (warm cream) */
+    .s1{color:rgba(255,250,235,0.10)}.s2{color:rgba(255,250,235,0.28)}
+    .s3{color:rgba(255,250,235,0.50)}.s4{color:rgba(255,250,235,0.72)}
+    .s5{color:rgba(255,250,235,0.90)}.s6{color:rgba(255,252,240,1.0)}
+    /* earth / soil */
+    .d1{color:rgba(100,75,40,0.20)}.d2{color:rgba(120,90,50,0.38)}.d3{color:rgba(140,105,60,0.55)}.d4{color:rgba(160,125,75,0.72)}
+    /* seed glow */
+    .sd1{color:rgba(200,170,90,0.30)}.sd2{color:rgba(220,190,110,0.60)}.sd3{color:rgba(240,210,130,0.90)}
+    /* rain */
+    .rn1{color:rgba(140,180,220,0.15)}.rn2{color:rgba(160,200,238,0.30)}
+    /* sun */
+    .su1{color:rgba(255,240,180,0.08)}.su2{color:rgba(255,245,200,0.18)}
+    /* green growth (sprout → canopy) */
+    .g1{color:rgba(50,140,45,0.15)}.g2{color:rgba(58,158,50,0.30)}.g3{color:rgba(65,175,55,0.50)}
+    .g4{color:rgba(72,192,60,0.68)}.g5{color:rgba(80,210,68,0.82)}.g6{color:rgba(88,228,75,0.94)}
+    /* bloom (pink-white) */
+    .bl1{color:rgba(255,190,200,0.20)}.bl2{color:rgba(255,175,190,0.42)}
+    .bl3{color:rgba(255,160,178,0.65)}.bl4{color:rgba(255,145,168,0.88)}
+    /* fruit (red) */
+    .fr1{color:rgba(230,55,42,0.30)}.fr2{color:rgba(242,65,50,0.55)}
+    .fr3{color:rgba(252,78,58,0.78)}.fr4{color:rgba(255,90,68,0.95)}
+    /* bark (brown, for trunk density) */
+    .bk1{color:rgba(110,80,45,0.25)}.bk2{color:rgba(130,95,55,0.48)}.bk3{color:rgba(150,115,68,0.72)}
+    /* noise */
+    .n1{color:rgba(90,105,80,0.025)}.n2{color:rgba(95,110,85,0.05)}
+    /* wind */
+    .wi{color:rgba(180,200,170,0.10)}
+    /* cn */
+    .cn{color:rgba(180,190,175,0.50)}
+  </style>
+</head>
+<body>
+  <div id="art"></div>
+  <script type="module" src="./apple.ts"></script>
+</body>
+</html>

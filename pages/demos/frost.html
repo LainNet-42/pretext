@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>霜</title>
+  <style>
+    *{box-sizing:border-box;margin:0}
+    html,body{height:100%;overflow:hidden;background:#060810}
+    body{display:flex;align-items:center;justify-content:center;cursor:default}
+    #art{text-align:center;user-select:none;-webkit-user-select:none;pointer-events:none}
+    .r{display:block;white-space:pre;font:13px/15px "SF Mono","Cascadia Code","Consolas",monospace;height:15px;letter-spacing:0.3px;user-select:none;pointer-events:none}
+    @media (max-width: 600px) {
+      #art{
+        --fw: calc(100vw / 352);
+        --fh: calc(100vh / 962);
+        transform: scale(min(var(--fw), var(--fh)));
+        transform-origin: center center;
+      }
+    }
+    /* subtitle text */
+    .s1{color:rgba(255,250,240,0.12)}.s2{color:rgba(255,250,240,0.30)}
+    .s3{color:rgba(255,250,240,0.52)}.s4{color:rgba(255,250,240,0.72)}
+    .s5{color:rgba(255,250,240,0.88)}.s6{color:rgba(255,250,240,1.00)}
+    /* frost — cool blue-white */
+    .fr1{color:rgba(140,180,220,0.15)}
+    .fr2{color:rgba(160,200,235,0.30)}
+    .fr3{color:rgba(180,215,245,0.50)}
+    .fr4{color:rgba(200,228,250,0.70)}
+    .fr5{color:rgba(225,240,255,0.88)}
+    .fr6{color:rgba(242,250,255,1.00)}
+    /* warm glow (cleared circle / distant light) */
+    .w1{color:rgba(255,225,165,0.25)}
+    .w2{color:rgba(255,215,145,0.50)}
+    .w3{color:rgba(255,205,125,0.78)}
+    .w4{color:rgba(255,195,105,0.95)}
+    /* background noise */
+    .n1{color:rgba(120,150,190,0.025)}
+    /* chinese sub */
+    .cn{color:rgba(170,185,205,0.55)}
+  </style>
+</head>
+<body>
+  <div id="art"></div>
+  <script type="module" src="./frost.ts"></script>
+</body>
+</html>

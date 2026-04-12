@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>煙</title>
+  <style>
+    *{box-sizing:border-box;margin:0}
+    html,body{height:100%;overflow:hidden;background:#080808}
+    body{display:flex;align-items:center;justify-content:center;cursor:default}
+    #art{text-align:center;user-select:none;-webkit-user-select:none;pointer-events:none}
+    .r{display:block;white-space:pre;font:13px/15px "SF Mono","Cascadia Code","Consolas",monospace;height:15px;letter-spacing:0.3px;user-select:none;pointer-events:none}
+    @media (max-width: 600px) {
+      #art{
+        --fw: calc(100vw / 352);
+        --fh: calc(100vh / 962);
+        transform: scale(min(var(--fw), var(--fh)));
+        transform-origin: center center;
+      }
+    }
+    /* only 5 density levels — restraint */
+    .a{color:rgba(200,185,165,0.12)}
+    .b{color:rgba(210,195,175,0.30)}
+    .c{color:rgba(220,208,188,0.52)}
+    .d{color:rgba(235,222,202,0.75)}
+    .e{color:rgba(250,240,220,0.94)}
+    /* ember (the source) */
+    .h1{color:rgba(255,160,60,0.40)}
+    .h2{color:rgba(255,180,85,0.65)}
+    .h3{color:rgba(255,200,110,0.88)}
+    /* subtitle */
+    .s1{color:rgba(255,250,235,0.08)}
+    .s2{color:rgba(255,250,235,0.22)}
+    .s6{color:rgba(255,252,240,0.88)}
+  </style>
+</head>
+<body>
+  <div id="art"></div>
+  <script type="module" src="./smoke.ts"></script>
+</body>
+</html>

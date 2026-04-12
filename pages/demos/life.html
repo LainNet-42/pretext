@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数字生命</title>
+  <style>
+    *{box-sizing:border-box;margin:0}
+    html,body{height:100%;overflow:hidden;background:#060810}
+    body{display:flex;align-items:center;justify-content:center;cursor:default}
+    #wrap{position:relative;width:352px;height:960px}
+    /* canvas layer: the creature (behind) */
+    canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0}
+    /* ASCII layer: atmosphere + text (in front, transparent bg) */
+    #art{position:absolute;inset:0;z-index:1;text-align:center;
+      user-select:none;-webkit-user-select:none;pointer-events:none}
+    .r{display:block;white-space:pre;font:13px/15px "SF Mono","Cascadia Code","Consolas",monospace;height:15px;letter-spacing:0.3px;user-select:none;pointer-events:none}
+    @media (max-width: 600px) {
+      #wrap{
+        --fw: calc(100vw / 352);
+        --fh: calc(100vh / 960);
+        transform: scale(min(var(--fw), var(--fh)));
+        transform-origin: center center;
+      }
+    }
+    /* deep water atmosphere */
+    .w1{color:rgba(50,110,170,0.06)}
+    .w2{color:rgba(60,125,185,0.14)}
+    .w3{color:rgba(75,145,205,0.28)}
+    /* subtitle */
+    .s1{color:rgba(255,250,240,0.08)}
+    .s2{color:rgba(255,250,240,0.25)}
+    .s6{color:rgba(255,252,240,0.85)}
+    /* cn */
+    .cn{color:rgba(160,180,200,0.45)}
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="c"></canvas>
+    <div id="art"></div>
+  </div>
+  <script type="module" src="./life.ts"></script>
+</body>
+</html>

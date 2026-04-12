@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>火山</title>
+  <style>
+    *{box-sizing:border-box;margin:0}
+    html,body{height:100%;overflow:hidden;background:#060810}
+    body{display:flex;align-items:center;justify-content:center;cursor:default}
+    #art{text-align:center;user-select:none;-webkit-user-select:none;pointer-events:none}
+    .r{display:block;white-space:pre;font:13px/15px "SF Mono","Cascadia Code","Consolas",monospace;height:15px;letter-spacing:0.3px;user-select:none;pointer-events:none}
+    @media (max-width: 600px) {
+      #art{
+        --fw: calc(100vw / 352);
+        --fh: calc(100vh / 962);
+        transform: scale(min(var(--fw), var(--fh)));
+        transform-origin: center center;
+      }
+    }
+    /* subtitle */
+    .s1{color:rgba(255,250,240,0.12)}.s2{color:rgba(255,250,240,0.30)}
+    .s3{color:rgba(255,250,240,0.52)}.s4{color:rgba(255,250,240,0.72)}
+    .s5{color:rgba(255,250,240,0.88)}.s6{color:rgba(255,250,240,1.00)}
+    /* water (from lotus-fall) */
+    .w1{color:rgba(70,140,195,0.32)}.w2{color:rgba(80,155,210,0.45)}
+    .w3{color:rgba(90,168,222,0.58)}.w4{color:rgba(100,180,232,0.70)}
+    .w5{color:rgba(110,190,242,0.82)}.w6{color:rgba(120,200,250,0.92)}
+    .w7{color:rgba(140,215,255,0.98)}
+    /* ripple */
+    .p1{color:rgba(85,150,208,0.22)}.p2{color:rgba(100,168,222,0.36)}
+    .p3{color:rgba(118,185,238,0.52)}.p4{color:rgba(135,198,248,0.66)}
+    /* lotus */
+    .g1{color:rgba(50,195,72,0.35)}.g2{color:rgba(58,210,80,0.55)}
+    .g3{color:rgba(65,225,88,0.75)}.g4{color:rgba(72,240,95,0.92)}
+    .f1{color:rgba(235,100,120,0.30)}.f2{color:rgba(242,108,128,0.52)}
+    .f3{color:rgba(248,118,138,0.74)}.f4{color:rgba(252,128,148,0.90)}
+    /* buddy */
+    .bd{color:rgba(255,210,130,0.85)}
+    /* ground / dry earth */
+    .d1{color:rgba(120,95,60,0.25)}.d2{color:rgba(140,110,70,0.45)}
+    .d3{color:rgba(160,125,80,0.65)}.d4{color:rgba(180,145,95,0.82)}
+    /* cracks */
+    .cr{color:rgba(60,45,25,0.80)}
+    /* smoke */
+    .k1{color:rgba(180,170,155,0.08)}.k2{color:rgba(190,180,165,0.18)}
+    .k3{color:rgba(200,190,175,0.32)}.k4{color:rgba(210,200,185,0.50)}
+    .k5{color:rgba(220,210,195,0.68)}.k6{color:rgba(235,225,210,0.85)}
+    .k7{color:rgba(250,242,228,0.96)}
+    /* ember / lava */
+    .e1{color:rgba(255,140,50,0.25)}.e2{color:rgba(255,160,70,0.50)}
+    .e3{color:rgba(255,180,90,0.75)}.e4{color:rgba(255,200,120,0.95)}
+    /* mountain body */
+    .m1{color:rgba(100,85,65,0.40)}.m2{color:rgba(120,100,75,0.60)}.m3{color:rgba(140,120,90,0.80)}
+    /* noise */
+    .n1{color:rgba(120,150,190,0.025)}
+    /* cn */
+    .cn{color:rgba(180,190,205,0.55)}
+  </style>
+</head>
+<body>
+  <div id="art"></div>
+  <script type="module" src="./volcano.ts"></script>
+</body>
+</html>
