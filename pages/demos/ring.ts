@@ -23,8 +23,8 @@ const BREATH_CHARS = ':.`oO'
 const INNER_CHARS = 'oO0@'
 const NOISE_CHARS = '.`,:;'
 const BUD_CHARS = 'oO'
-const LEAF_CHARS = 'vVwW'
-const FINAL_LEAF_CHARS = 'VYW'
+const LEAF_CHARS = '*+x'
+const FINAL_LEAF_CHARS = '@#'
 const VINE_BY_OCT = ['-', '\\', '|', '/', '-', '\\', '|', '/']
 const CURVE_CHARS = '()'
 const SHUTDOWN_CHARS = '=~oO0'
@@ -320,6 +320,34 @@ function budCharAt(seed: number): string {
   return BUD_CHARS[Math.floor(h(seed) * BUD_CHARS.length)]!
 }
 
+function stampGrowthPatch(angle: number, energy: number, s: number, finalLeaf: boolean): void {
+  const anchor = ringAnchor(angle, 1.02)
+  putCell(anchor.x, anchor.y, budCharAt(anchor.x * 91 + anchor.y * 37 + s * 100), 4, s)
+
+  const tangentX = -Math.sin(angle)
+  const tangentY = Math.cos(angle)
+  const normalX = Math.cos(angle)
+  const normalY = Math.sin(angle)
+
+  const armLen = 1 + Math.floor(energy * 2.2)
+  for (let dir = -1; dir <= 1; dir += 2) {
+    for (let step = 1; step <= armLen; step++) {
+      const gx = Math.round(anchor.x + tangentX * step * dir + normalX * (0.25 + energy * 0.8))
+      const gy = Math.round(anchor.y + tangentY * step * dir + normalY * (0.2 + energy * 0.65))
+      const oct = angleToOctant(angle + (dir > 0 ? Math.PI / 2 : -Math.PI / 2))
+      putCell(gx, gy, VINE_BY_OCT[oct]!, step === armLen && finalLeaf ? 2 : 1, s)
+    }
+  }
+
+  const noduleCount = finalLeaf ? 2 : 1
+  for (let i = 0; i < noduleCount; i++) {
+    const bias = (i - (noduleCount - 1) * 0.5) * 1.6
+    const gx = Math.round(anchor.x + tangentX * bias + normalX * (1.1 + i * 0.45))
+    const gy = Math.round(anchor.y + tangentY * bias + normalY * (0.9 + i * 0.35))
+    placeLeafNear(gx, gy, finalLeaf ? 3 : 2, s, leafCounter++)
+  }
+}
+
 function stepTip(tip: Tip, s: number): void {
   if (!tip.alive) return
 
@@ -439,10 +467,7 @@ function processPendingSprouts(s: number): void {
   for (let i = pendingSprouts.length - 1; i >= 0; i--) {
     const sprout = pendingSprouts[i]!
     if (s < sprout.spawnAt) continue
-    const anchor = ringAnchor(sprout.angle, 1.02)
-    putCell(anchor.x, anchor.y, budCharAt(anchor.x * 91 + anchor.y * 37 + s * 100), 4, s)
-    if (sprout.finalLeaf) placeLeafNear(anchor.x, anchor.y, 3, s, leafCounter++)
-    spawnTip(anchor.x, anchor.y, sprout.theta + (Math.random() - 0.5) * 0.12, sprout.energy)
+    stampGrowthPatch(sprout.angle, sprout.energy, s, sprout.finalLeaf)
     pendingSprouts.splice(i, 1)
   }
 }
