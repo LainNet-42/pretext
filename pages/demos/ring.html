@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ivy Ring</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    html, body { height: 100%; overflow: hidden; background: #040705; }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: default;
+      background:
+        radial-gradient(circle at 50% 54%, rgba(116, 146, 102, 0.08), transparent 22%),
+        radial-gradient(circle at 50% 54%, rgba(224, 232, 196, 0.05), transparent 10%),
+        linear-gradient(180deg, #060a08 0%, #040705 48%, #030403 100%);
+    }
+    #art {
+      text-align: center;
+      user-select: none;
+      -webkit-user-select: none;
+      pointer-events: none;
+      filter: drop-shadow(0 0 16px rgba(110, 146, 102, 0.08));
+    }
+    .r {
+      display: block;
+      white-space: pre;
+      height: 15px;
+      font: 13px/15px "SF Mono", "Cascadia Code", "Consolas", monospace;
+      letter-spacing: 0.3px;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    @media (max-width: 600px) {
+      #art {
+        --fw: calc(100vw / 352);
+        --fh: calc(100vh / 962);
+        transform: scale(min(var(--fw), var(--fh)));
+        transform-origin: center center;
+      }
+    }
+
+    .s1 { color: rgba(255,255,255,0.14); }
+    .s2 { color: rgba(255,255,255,0.36); }
+    .s3 { color: rgba(255,255,255,0.58); }
+    .s4 { color: rgba(255,255,255,0.78); }
+    .s5 { color: rgba(255,255,255,0.92); }
+    .s6 { color: #ffffff; }
+
+    .ft1 { color: rgba(234,240,228,0.92); }
+    .ft2 { color: rgba(214,224,208,0.76); }
+    .ft3 { color: rgba(188,202,184,0.58); }
+    .ft4 { color: rgba(158,176,156,0.40); }
+    .ft5 { color: rgba(128,148,129,0.24); }
+
+    .ds1 { color: rgba(190,222,176,0.82); }
+    .ds2 { color: rgba(162,202,152,0.62); }
+    .ds3 { color: rgba(136,176,128,0.44); }
+    .ds4 { color: rgba(110,146,103,0.28); }
+
+    .tr1 { color: rgba(220,232,216,0.14); }
+    .tr2 { color: rgba(216,230,212,0.28); }
+    .tr3 { color: rgba(208,224,204,0.44); }
+    .tr4 { color: rgba(202,218,198,0.58); }
+
+    .bs1 { color: rgba(220,235,200,0.34); }
+    .bs2 { color: rgba(226,240,204,0.58); }
+    .bs3 { color: rgba(234,246,214,0.82); }
+    .bs4 { color: rgba(244,250,225,0.95); }
+
+    .bp1 { color: rgba(198,224,180,0.26); }
+    .bp2 { color: rgba(214,234,194,0.44); }
+    .bp3 { color: rgba(228,244,208,0.66); }
+    .bp4 { color: rgba(241,250,222,0.86); }
+
+    .rg1 { color: rgba(46,64,49,0.26); }
+    .rg2 { color: rgba(58,82,60,0.38); }
+    .rg3 { color: rgba(72,102,72,0.50); }
+    .rg4 { color: rgba(88,128,86,0.62); }
+    .rg5 { color: rgba(112,158,108,0.76); }
+    .rg6 { color: rgba(144,188,132,0.90); }
+    .rg7 { color: rgba(182,214,164,0.98); }
+
+    .rh1 { color: rgba(178,208,160,0.40); }
+    .rh2 { color: rgba(206,228,184,0.62); }
+    .rh3 { color: rgba(230,242,202,0.82); }
+    .rh4 { color: rgba(246,250,226,0.98); }
+
+    .gh1 { color: rgba(118,146,118,0.18); }
+    .gh2 { color: rgba(136,168,136,0.28); }
+    .gh3 { color: rgba(160,192,156,0.40); }
+
+    .in1 { color: rgba(172,200,150,0.14); }
+    .in2 { color: rgba(194,220,172,0.26); }
+    .in3 { color: rgba(220,236,194,0.42); }
+    .in4 { color: rgba(238,246,212,0.58); }
+
+    .vt1 { color: rgba(196,224,176,0.56); }
+    .vt2 { color: rgba(214,236,192,0.76); }
+    .vt3 { color: rgba(228,246,206,0.90); }
+    .vt4 { color: rgba(238,250,216,0.98); }
+
+    .va1 { color: rgba(56,120,72,0.54); }
+    .va2 { color: rgba(72,146,88,0.68); }
+    .va3 { color: rgba(92,174,104,0.82); }
+    .va4 { color: rgba(118,198,126,0.92); }
+    .va5 { color: rgba(146,218,150,1); }
+
+    .vo1 { color: rgba(26,56,36,0.56); }
+    .vo2 { color: rgba(36,74,48,0.72); }
+    .vo3 { color: rgba(48,94,60,0.86); }
+    .vo4 { color: rgba(64,116,74,0.94); }
+
+    .lf2 { color: rgba(230,240,194,0.84); }
+    .lf3 { color: rgba(242,248,204,0.94); }
+    .lf4 { color: rgba(250,252,214,1); }
+
+    .fl1 { color: rgba(218,232,182,0.74); }
+    .fl2 { color: rgba(234,244,196,0.88); }
+    .fl3 { color: rgba(244,250,208,0.96); }
+    .fl4 { color: rgba(252,254,220,1); }
+
+    .br1 { color: rgba(200,224,180,0.18); }
+    .br2 { color: rgba(214,234,194,0.38); }
+    .br3 { color: rgba(228,244,208,0.58); }
+    .br4 { color: rgba(239,249,220,0.80); }
+    .br5 { color: rgba(248,252,230,0.96); }
+
+    .fs1 { color: rgba(238,246,222,0); }
+    .fs2 { color: rgba(238,246,222,0.28); }
+    .fs3 { color: rgba(242,248,226,0.54); }
+    .fs4 { color: rgba(246,250,232,0.78); }
+    .fs5 { color: rgba(252,254,242,0.94); }
+
+    .mt1 { color: rgba(150,176,146,0.10); }
+    .mt2 { color: rgba(172,194,164,0.16); }
+    .mt3 { color: rgba(198,214,188,0.24); }
+
+    .n1 { color: rgba(255,255,255,0.025); }
+    .n2 { color: rgba(255,255,255,0.05); }
+    .n3 { color: rgba(255,255,255,0.08); }
+
+    .cn { color: rgba(186,196,186,0.56); }
+  </style>
+</head>
+<body>
+  <div id="art"></div>
+  <script type="module" src="./ring.ts"></script>
+</body>
+</html>
