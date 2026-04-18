@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>alien beauty</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%;
+  background: #000;
+  display: flex; justify-content: center; align-items: center;
+  overflow: hidden;
+}
+#art {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 9px;
+  line-height: 10px;
+  letter-spacing: 0;
+  white-space: pre;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+/* color ladder: void -> deep purple -> blue -> cyan -> white */
+.a { color: #000008; }
+.b { color: #0e0028; }
+.c { color: #1c0055; }
+.d { color: #00007a; }
+.e { color: #0022b8; }
+.f { color: #0055ee; }
+.g { color: #0099ff; }
+.h { color: #00ccdd; }
+.i { color: #00ffcc; }
+.j { color: #66ffdd; }
+.k { color: #ccffee; }
+.l { color: #ffffff; }
+</style>
+</head>
+<body>
+<pre id="art"></pre>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+<script>
+const COLS = 54
+const ROWS = 96
+const CHARS = ' ·.:;=+*#@'
+const CLSS  = ['a','b','c','d','e','f','g','h','i','j','k','l']
+const NC    = CLSS.length
+const NCH   = CHARS.length
+
+const art = document.getElementById('art')
+
+// Pre-allocated buffers
+const val  = new Float32Array(COLS * ROWS)
+const htmlParts = []  // rebuilt each frame but avoids += churn
+
+// 3 orbital nodes: angle, orbit speed, radii (fraction of grid), pulse freq
+const N_NODES   = 3
+const N_ANGLE   = [0, 2.094, 4.189]
+const N_SPEED   = [0.38, 0.25, 0.52]
+const N_RAD_X   = [0.28, 0.20, 0.34]
+const N_RAD_Y   = [0.26, 0.18, 0.30]
+const N_PULSE   = [2.1, 3.3, 1.7]
+
+// glow radius in grid-x units
+const GLOW_R  = COLS * 0.22
+const GLOW_R2 = GLOW_R * GLOW_R
+// secondary softer aura
+const AURA_R2 = (COLS * 0.42) * (COLS * 0.42)
+
+// aspect: grid cells are taller on screen, need dy correction when computing distance
+const ASPECT = COLS / ROWS  // ~0.5625
+
+new p5(function(sk) {
+  sk.setup = function() {
+    sk.noCanvas()
+    sk.frameRate(30)
+  }
+
+  sk.draw = function() {
+    const t = sk.frameCount * 0.033
+
+    // Compute node positions and pulse this frame
+    const nx = [0, 0, 0]
+    const ny = [0, 0, 0]
+    const np = [0, 0, 0]
+    for (let i = 0; i < N_NODES; i++) {
+      nx[i] = COLS * 0.5 + Math.cos(t * N_SPEED[i] + N_ANGLE[i]) * COLS * N_RAD_X[i]
+      ny[i] = ROWS * 0.5 + Math.sin(t * N_SPEED[i] * 0.65 + N_ANGLE[i]) * ROWS * N_RAD_Y[i]
+      np[i] = 0.55 + Math.sin(t * N_PULSE[i]) * 0.45
+    }
+
+    for (let gy = 0; gy < ROWS; gy++) {
+      for (let gx = 0; gx < COLS; gx++) {
+        // Multi-octave noise field: slow drift + faster detail
+        const n0 = sk.noise(gx * 0.050, gy * 0.040, t * 0.18)
+        const n1 = sk.noise(gx * 0.100 + 50, gy * 0.080 + 30, t * 0.30)
+        const n2 = sk.noise(gx * 0.200, gy * 0.160 + t * 0.05)
+
+        // Vein ridges: bright where noise crosses 0.5 (contour lines)
+        const v0 = Math.max(0, 1 - Math.abs(n0 - 0.5) * 8.5)
+        const v1 = Math.max(0, 1 - Math.abs(n1 - 0.5) * 7.0) * 0.55
+        const v2 = Math.max(0, 1 - Math.abs(n2 - 0.5) * 5.5) * 0.30
+        const vein = v0 * 0.6 + v1 * 0.25 + v2 * 0.15
+
+        // Node glow + soft aura
+        let glow = 0
+        let aura = 0
+        for (let i = 0; i < N_NODES; i++) {
+          const dx = gx - nx[i]
+          const dy = (gy - ny[i]) * ASPECT  // correct for rectangular grid
+          const d2 = dx * dx + dy * dy
+          glow += np[i] * Math.max(0, 1 - d2 / GLOW_R2)
+          aura += np[i] * 0.25 * Math.max(0, 1 - d2 / AURA_R2)
+        }
+
+        // Subtle haze from base noise
+        const haze = (n0 * n1) * 0.08
+
+        val[gy * COLS + gx] = Math.min(1, vein * 0.5 + glow + aura + haze)
+      }
+    }
+
+    // Build HTML
+    htmlParts.length = 0
+    for (let gy = 0; gy < ROWS; gy++) {
+      for (let gx = 0; gx < COLS; gx++) {
+        const v  = val[gy * COLS + gx]
+        const ci = Math.min(NC  - 1, v * NC  | 0)
+        const ki = Math.min(NCH - 1, v * NCH | 0)
+        htmlParts.push('<span class="', CLSS[ci], '">', CHARS[ki], '</span>')
+      }
+      htmlParts.push('\n')
+    }
+    art.innerHTML = htmlParts.join('')
+  }
+})
+</script>
+</body>
+</html>

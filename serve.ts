@@ -48,6 +48,7 @@ const routes: Record<string, string> = {
   '/demos/ivy-climb': 'pages/demos/ivy-climb.html',
   '/demos/ring': 'pages/demos/ring.html',
   '/demos/kan': 'pages/demos/kan.html',
+  '/demos/alien-beauty': 'pages/demos/alien-beauty.html',
   '/demos/showcase': 'pages/demos/showcase.html',
   '/demos/bubbles': 'pages/demos/bubbles.html',
   '/demos/accordion': 'pages/demos/accordion.html',
