@@ -22,6 +22,9 @@ const BURST_CHARS = '*+x.o~'
 const BREATH_CHARS = ':.`oO'
 const INNER_CHARS = 'oO0@'
 const NOISE_CHARS = '.`,:;'
+const BUD_CHARS = 'oO'
+const LEAF_CHARS = 'vVwW'
+const FINAL_LEAF_CHARS = 'VYW'
 const VINE_BY_OCT = ['-', '\\', '|', '/', '-', '\\', '|', '/']
 const CURVE_CHARS = '()'
 const SHUTDOWN_CHARS = '=~oO0'
@@ -109,15 +112,11 @@ const prepChars = new Set(
 )
 for (const ch of prepChars) prepareWithSegments(ch, FONT)
 
-const LEAF_POOL = SCRIPT_LINES.slice(1, 5).join('')
-  .split('')
-  .filter(ch => isCJK(ch.charCodeAt(0)))
-  .join('')
-
 const ringOcc = new Uint8Array(N)
 const ringDepth = new Float32Array(N)
 const ringLum = new Float32Array(N)
 const ringEdge = new Uint8Array(N)
+const ringAngle = new Float32Array(N)
 
 const cellCh: string[] = new Array(N).fill('')
 const cellKind = new Uint8Array(N)
@@ -148,6 +147,14 @@ interface Shockwave {
 
 const shockwaves: Shockwave[] = []
 
+interface Crack {
+  angle: number
+  spread: number
+  strength: number
+}
+
+const cracks: Crack[] = []
+
 interface Particle {
   x: number
   y: number
@@ -175,8 +182,21 @@ interface GhostChar {
   y: number
   tx: number
   ty: number
+  born: number
+  budAt: number
+  stage: number
   opacity: number
 }
+
+interface PendingSprout {
+  angle: number
+  theta: number
+  energy: number
+  spawnAt: number
+  finalLeaf: boolean
+}
+
+const pendingSprouts: PendingSprout[] = []
 
 const enum LineState { WAITING, TYPING, HOLDING, FALLING, DISSOLVING, GONE, BREATH, FADEIN, VISIBLE }
 
@@ -277,7 +297,8 @@ function spawnTip(x: number, y: number, theta: number, energy: number): void {
 }
 
 function placeLeafNear(x: number, y: number, kind: number, s: number, leafIdx: number): void {
-  const ch = LEAF_POOL[leafIdx % LEAF_POOL.length]!
+  const pool = kind === 3 ? FINAL_LEAF_CHARS : LEAF_CHARS
+  const ch = pool[leafIdx % pool.length]!
   const spots = [
     [0, 0],
     [1, 0],
@@ -293,6 +314,10 @@ function placeLeafNear(x: number, y: number, kind: number, s: number, leafIdx: n
     const [dx, dy] = spots[i]!
     if (putCell(x + dx, y + dy, ch, kind, s)) return
   }
+}
+
+function budCharAt(seed: number): string {
+  return BUD_CHARS[Math.floor(h(seed) * BUD_CHARS.length)]!
 }
 
 function stepTip(tip: Tip, s: number): void {
@@ -357,45 +382,68 @@ function ringAnchor(angle: number, scale = 1): { x: number, y: number } {
   }
 }
 
-function sproutRimLeaves(startAngle: number, endAngle: number, count: number, s: number, finalLeaf = false): void {
-  for (let i = 0; i < count; i++) {
-    const t = count === 1 ? 0.5 : i / (count - 1)
-    const angle = startAngle + (endAngle - startAngle) * t + (Math.random() - 0.5) * 0.1
-    const anchor = ringAnchor(angle, 1.02 + Math.random() * 0.1)
-    placeLeafNear(anchor.x, anchor.y, finalLeaf ? 3 : 2, s, leafCounter++)
+function angleDelta(a: number, b: number): number {
+  let d = a - b
+  while (d > Math.PI) d -= Math.PI * 2
+  while (d < -Math.PI) d += Math.PI * 2
+  return d
+}
+
+function impactArcForLine(lineIdx: number): { start: number, end: number } {
+  return {
+    start: -2.7 + lineIdx * 0.18,
+    end: -0.42 - lineIdx * 0.06,
   }
 }
 
-function spawnImpactGrowth(lineIdx: number, s: number): void {
+function scheduleImpactGrowth(lineIdx: number, s: number): void {
   if (lineIdx === 0) return
 
-  const configs: Array<{ anchor: number, theta: number, energy: number }> = []
+  const arc = impactArcForLine(lineIdx)
+  const configs: Array<{ anchor: number, theta: number, energy: number, delay: number, finalLeaf: boolean }> = []
   if (lineIdx === 1) {
-    configs.push({ anchor: -2.2, theta: -2.0, energy: 1.05 })
-    configs.push({ anchor: -0.95, theta: -1.15, energy: 1.05 })
-    sproutRimLeaves(-2.35, -0.82, 2, s)
+    configs.push({ anchor: arc.start + 0.24, theta: -1.98, energy: 1.02, delay: 0.34, finalLeaf: false })
+    configs.push({ anchor: arc.end - 0.18, theta: -1.18, energy: 1.02, delay: 0.48, finalLeaf: false })
   } else if (lineIdx === 2) {
-    configs.push({ anchor: Math.PI, theta: -2.15, energy: 1.0 })
-    configs.push({ anchor: 0, theta: -0.95, energy: 1.0 })
-    sproutRimLeaves(-2.7, -0.4, 3, s)
+    configs.push({ anchor: arc.start + 0.16, theta: -2.04, energy: 1.04, delay: 0.28, finalLeaf: false })
+    configs.push({ anchor: arc.end - 0.1, theta: -1.08, energy: 1.04, delay: 0.42, finalLeaf: false })
   } else if (lineIdx === 3) {
-    configs.push({ anchor: -2.45, theta: -2.0, energy: 1.18 })
-    configs.push({ anchor: -1.57, theta: -1.57, energy: 1.0 })
-    configs.push({ anchor: -0.72, theta: -1.1, energy: 1.18 })
-    sproutRimLeaves(-2.8, -0.3, 4, s)
+    configs.push({ anchor: arc.start + 0.12, theta: -2.05, energy: 1.14, delay: 0.22, finalLeaf: false })
+    configs.push({ anchor: (arc.start + arc.end) * 0.5, theta: -1.57, energy: 0.98, delay: 0.4, finalLeaf: false })
+    configs.push({ anchor: arc.end - 0.08, theta: -1.06, energy: 1.14, delay: 0.58, finalLeaf: false })
   } else {
-    configs.push({ anchor: -2.55, theta: -2.05, energy: 1.28 })
-    configs.push({ anchor: -1.9, theta: -1.74, energy: 1.12 })
-    configs.push({ anchor: -1.25, theta: -1.38, energy: 1.12 })
-    configs.push({ anchor: -0.58, theta: -1.02, energy: 1.28 })
-    sproutRimLeaves(-3.0, -0.15, 6, s, true)
+    configs.push({ anchor: arc.start + 0.08, theta: -2.08, energy: 1.22, delay: 0.18, finalLeaf: true })
+    configs.push({ anchor: arc.start + (arc.end - arc.start) * 0.34, theta: -1.72, energy: 1.08, delay: 0.32, finalLeaf: false })
+    configs.push({ anchor: arc.start + (arc.end - arc.start) * 0.66, theta: -1.36, energy: 1.08, delay: 0.46, finalLeaf: false })
+    configs.push({ anchor: arc.end - 0.06, theta: -0.98, energy: 1.22, delay: 0.64, finalLeaf: true })
   }
 
   for (let i = 0; i < configs.length; i++) {
     const cfg = configs[i]!
-    const anchor = ringAnchor(cfg.anchor, 1.04)
-    putCell(anchor.x, anchor.y, VINE_BY_OCT[angleToOctant(cfg.theta)]!, 1, s)
-    spawnTip(anchor.x, anchor.y, cfg.theta + (Math.random() - 0.5) * 0.14, cfg.energy)
+    cracks.push({
+      angle: cfg.anchor,
+      spread: 0.16 + i * 0.02,
+      strength: 0.96 + lineIdx * 0.08,
+    })
+    pendingSprouts.push({
+      angle: cfg.anchor,
+      theta: cfg.theta,
+      energy: cfg.energy,
+      spawnAt: s + cfg.delay,
+      finalLeaf: cfg.finalLeaf,
+    })
+  }
+}
+
+function processPendingSprouts(s: number): void {
+  for (let i = pendingSprouts.length - 1; i >= 0; i--) {
+    const sprout = pendingSprouts[i]!
+    if (s < sprout.spawnAt) continue
+    const anchor = ringAnchor(sprout.angle, 1.02)
+    putCell(anchor.x, anchor.y, budCharAt(anchor.x * 91 + anchor.y * 37 + s * 100), 4, s)
+    if (sprout.finalLeaf) placeLeafNear(anchor.x, anchor.y, 3, s, leafCounter++)
+    spawnTip(anchor.x, anchor.y, sprout.theta + (Math.random() - 0.5) * 0.12, sprout.energy)
+    pendingSprouts.splice(i, 1)
   }
 }
 
@@ -404,17 +452,18 @@ function computeRing(t: number): void {
   ringDepth.fill(0)
   ringLum.fill(0)
   ringEdge.fill(0)
+  ringAngle.fill(0)
 
-  const settled = Math.max(0, Math.min(1, (ringGlow - 0.35) / 0.45))
-  const A = 1.02 + Math.sin(t * 0.23) * 0.08 + settled * 0.05
-  const spin = (1 - settled) * 0.16 + settled * 0.04
+  const growth = Math.max(0, Math.min(1, ringGlow * 1.18 + breathRadiance * 0.12))
+  const A = 1.02 + Math.sin(t * 0.23) * 0.08 + growth * 0.04
+  const spin = (1 - growth) * 0.13 + growth * 0.035
   const B = 0.55 + t * spin
   const cA = Math.cos(A)
   const sA = Math.sin(A)
   const cB = Math.cos(B)
   const sB = Math.sin(B)
-  const scaleX = 16 + settled * 1.4
-  const scaleY = 10 + settled * 0.9
+  const scaleX = 8.9 + growth * 7.2
+  const scaleY = 5.2 + growth * 4.9
 
   for (let j = 0; j < 6.283; j += 0.07) {
     const ct = Math.cos(j)
@@ -437,6 +486,7 @@ function computeRing(t: number): void {
       if (D <= ringDepth[idx]!) continue
       ringDepth[idx] = D
       ringOcc[idx] = 1
+      ringAngle[idx] = Math.atan2(y - CENTER_Y, x - CENTER_X)
 
       const rawLum =
         (st * sA - sp * ct * cA) * cB -
@@ -471,6 +521,17 @@ function shockAt(gx: number, gy: number): number {
     const delta = Math.abs(dist - sh.radius)
     if (delta > sh.width) continue
     value += (1 - delta / sh.width) * sh.strength
+  }
+  return value
+}
+
+function crackAt(angle: number): number {
+  let value = 0
+  for (let i = 0; i < cracks.length; i++) {
+    const crack = cracks[i]!
+    const delta = Math.abs(angleDelta(angle, crack.angle))
+    if (delta > crack.spread) continue
+    value += (1 - delta / crack.spread) * crack.strength
   }
   return value
 }
@@ -535,19 +596,27 @@ function updateShockwaves(): void {
   }
 }
 
+function updateCracks(): void {
+  for (let i = cracks.length - 1; i >= 0; i--) {
+    const crack = cracks[i]!
+    crack.strength *= 0.975
+    crack.spread = Math.min(0.4, crack.spread + 0.003)
+    if (crack.strength <= 0.05) cracks.splice(i, 1)
+  }
+}
+
 function updateOrganism(): void {
   ringGlow += (organismEnergy - ringGlow) * 0.035
   if (breathRadiance > 0) ringGlow += (1 - ringGlow) * 0.045
 }
 
-function spawnGhostsFromLine(line: SubLine, idx: number): void {
+function spawnGhostsFromLine(line: SubLine, idx: number, s: number): void {
   line.ghosts = []
   const offsets = charOffsets(line.text)
-  const startAngle = -2.55 + idx * 0.22
-  const endAngle = -0.55 - idx * 0.08
+  const arc = impactArcForLine(idx)
   for (let i = 0; i < line.text.length; i++) {
     const t = line.text.length <= 1 ? 0.5 : i / (line.text.length - 1)
-    const angle = startAngle + (endAngle - startAngle) * t + (Math.random() - 0.5) * 0.12
+    const angle = arc.start + (arc.end - arc.start) * t + (Math.random() - 0.5) * 0.12
     const anchor = ringAnchor(angle, 0.78 + Math.random() * 0.38)
     line.ghosts.push({
       ch: line.text[i]!,
@@ -555,17 +624,27 @@ function spawnGhostsFromLine(line: SubLine, idx: number): void {
       y: CENTER_Y,
       tx: anchor.x,
       ty: anchor.y,
+      born: s,
+      budAt: s + 0.75 + t * 0.28,
+      stage: 0,
       opacity: 0.78,
     })
   }
 }
 
-function updateGhosts(line: SubLine, drift: number): void {
+function updateGhosts(line: SubLine, drift: number, s: number): void {
   for (let i = 0; i < line.ghosts.length; i++) {
     const gc = line.ghosts[i]!
-    gc.x += (gc.tx - gc.x) * 0.06 + (Math.random() - 0.5) * drift
-    gc.y += (gc.ty - gc.y) * 0.06 + (Math.random() - 0.5) * drift
-    gc.opacity *= 0.992
+    if (gc.stage === 0) {
+      gc.x += (gc.tx - gc.x) * 0.08 + (Math.random() - 0.5) * drift
+      gc.y += (gc.ty - gc.y) * 0.08 + (Math.random() - 0.5) * drift
+      if (s >= gc.budAt) gc.stage = 1
+      gc.opacity *= 0.993
+    } else {
+      gc.x += (gc.tx - gc.x) * 0.18
+      gc.y += (gc.ty - gc.y) * 0.18
+      gc.opacity *= 0.988
+    }
   }
 }
 
@@ -644,18 +723,18 @@ function updateLines(s: number): void {
             strength: 0.8 + idx * 0.07,
           })
           spawnBurst(impactWeight)
-          spawnGhostsFromLine(line, idx)
-          spawnImpactGrowth(idx, s)
+          spawnGhostsFromLine(line, idx, s)
+          scheduleImpactGrowth(idx, s)
         }
         break
       }
       case LineState.DISSOLVING:
         line.dissolveT = Math.min(1, (s - line.dissolveStartT) / 1.8)
-        updateGhosts(line, 0.04)
+        updateGhosts(line, 0.04, s)
         if (line.dissolveT >= 1) line.state = LineState.GONE
         break
       case LineState.GONE:
-        updateGhosts(line, 0.02)
+        updateGhosts(line, 0.02, s)
         break
       case LineState.BREATH:
         line.breathT = Math.min(1, (s - line.typeStartT) / 3)
@@ -688,6 +767,10 @@ function updateLines(s: number): void {
 function cellClass(idx: number, s: number): string {
   const age = s - cellBirth[idx]!
   const kind = cellKind[idx]
+  if (kind === 4) {
+    if (age < 0.5) return `bd${Math.max(1, Math.min(3, Math.ceil((1 - age / 0.5) * 3)))}`
+    return 'bd1'
+  }
   if (kind === 3) {
     if (age < 0.65) return `fl${Math.max(1, Math.min(4, Math.ceil((1 - age / 0.65) * 4 + 0.5)))}`
     if (age < 2.5) return 'fl2'
@@ -728,6 +811,7 @@ function resetWorld(): void {
   ringDepth.fill(0)
   ringLum.fill(0)
   ringEdge.fill(0)
+  ringAngle.fill(0)
   cellCh.fill('')
   cellKind.fill(0)
   cellBirth.fill(0)
@@ -735,6 +819,8 @@ function resetWorld(): void {
   particles.length = 0
   trails.length = 0
   shockwaves.length = 0
+  cracks.length = 0
+  pendingSprouts.length = 0
   leafCounter = 0
   organismEnergy = 0
   ringGlow = 0
@@ -777,7 +863,9 @@ function frame(now: number): void {
   updateLines(s)
   updateParticles()
   updateShockwaves()
+  updateCracks()
   updateOrganism()
+  processPendingSprouts(s)
 
   if (ms - lastTipStep >= TIP_STEP_MS) {
     lastTipStep = ms
@@ -905,7 +993,7 @@ function frame(now: number): void {
     if (!prev || tr.opacity > prev.opacity) trailCells.set(key, { ch: tr.ch, opacity: tr.opacity })
   }
 
-  const ghostCells = new Map<string, { ch: string, opacity: number }>()
+  const ghostCells = new Map<string, { ch: string, opacity: number, stage: number }>()
   for (let i = 0; i < lines.length; i++) {
     const ghosts = lines[i]!.ghosts
     for (let j = 0; j < ghosts.length; j++) {
@@ -913,7 +1001,7 @@ function frame(now: number): void {
       if (gc.opacity < 0.03) continue
       const key = `${Math.round(gc.x)},${Math.round(gc.y)}`
       const prev = ghostCells.get(key)
-      if (!prev || gc.opacity > prev.opacity) ghostCells.set(key, { ch: gc.ch, opacity: gc.opacity })
+      if (!prev || gc.opacity > prev.opacity) ghostCells.set(key, { ch: gc.ch, opacity: gc.opacity, stage: gc.stage })
     }
   }
 
@@ -1022,28 +1110,44 @@ function frame(now: number): void {
 
       const gc = ghostCells.get(key)
       if (gc && gc.opacity > 0.04) {
-        html += `<span class="gh${Math.max(1, Math.min(3, Math.ceil(gc.opacity * 3)))}">${esc(gc.ch)}</span>`
+        if (gc.stage === 0) {
+          html += `<span class="sd${Math.max(1, Math.min(3, Math.ceil(gc.opacity * 3)))}">${esc(gc.ch)}</span>`
+        } else {
+          html += `<span class="bd${Math.max(1, Math.min(3, Math.ceil(gc.opacity * 3)))}">${budCharAt(seed + fi * 21)}</span>`
+        }
         continue
       }
 
       if (ringOcc[idx] === 1) {
         const shock = shockAt(gx, mappedGy)
         const lum = ringLum[idx]!
+        const crack = crackAt(ringAngle[idx]!)
+        if (crack > 0.62 && ringEdge[idx] === 0 && h(seed + fi * 3) < 0.46) {
+          html += ' '
+          continue
+        }
         if (ringEdge[idx] > 0 && lum + shock + ringGlow * 0.35 > 0.22) {
-          const lvl = Math.max(1, Math.min(4, Math.ceil(Math.min(1, lum * 0.8 + shock * 0.75 + ringGlow * 0.35) * 4)))
-          html += `<span class="rh${lvl}">${EDGE_CHARS[Math.floor(h(seed + fi * 7) * EDGE_CHARS.length)]!}</span>`
+          const lvl = Math.max(1, Math.min(4, Math.ceil(Math.min(1, lum * 0.8 + shock * 0.75 + ringGlow * 0.35 + crack * 0.5) * 4)))
+          html += `<span class="${crack > 0.15 ? `cr${lvl}` : `rh${lvl}`}">${EDGE_CHARS[Math.floor(h(seed + fi * 7) * EDGE_CHARS.length)]!}</span>`
         } else {
-          const lvl = Math.max(1, Math.min(7, Math.ceil(Math.min(1, lum * 0.75 + ringGlow * 0.4 + shock * 0.55) * 7)))
+          const lvl = Math.max(1, Math.min(7, Math.ceil(Math.min(1, lum * 0.75 + ringGlow * 0.4 + shock * 0.55 + crack * 0.25) * 7)))
           html += `<span class="rg${lvl}">${RING_CHARS[Math.floor(h(seed + fi * 5) * RING_CHARS.length)]!}</span>`
         }
         continue
       }
 
-      const dx = (gx - CENTER_X) / HOLE_RX
-      const dy = (mappedGy - CENTER_Y) / HOLE_RY
+      const aperture = 0.28 + Math.min(1, ringGlow * 1.15 + breathRadiance * 0.12) * 0.86
+      const dx = (gx - CENTER_X) / (HOLE_RX * aperture)
+      const dy = (mappedGy - CENTER_Y) / (HOLE_RY * aperture)
       const holeDist = dx * dx + dy * dy
       if (holeDist < 1.08) {
         const inner = Math.max(0, breathRadiance * (1 - holeDist / 1.08) * 1.2 + ringGlow * 0.1 - 0.02)
+        const seedCore = Math.max(0, (1 - aperture) * 0.72 - holeDist * 0.18)
+        if (seedCore > 0.04 && h(seed + fi * 9) < seedCore * 0.34) {
+          const lvl = Math.max(1, Math.min(3, Math.ceil(seedCore * 4)))
+          html += `<span class="sd${lvl}">${INNER_CHARS[Math.floor(h(seed + fi * 15) * INNER_CHARS.length)]!}</span>`
+          continue
+        }
         if (inner > 0.03 && h(seed + fi * 9) < inner * 0.3) {
           const lvl = Math.max(1, Math.min(4, Math.ceil(inner * 4)))
           html += `<span class="in${lvl}">${INNER_CHARS[Math.floor(h(seed + fi * 13) * INNER_CHARS.length)]!}</span>`
