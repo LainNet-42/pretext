@@ -45,6 +45,9 @@ const routes: Record<string, string> = {
   '/demos/life': 'pages/demos/life.html',
   '/demos/fluid-ascii': 'pages/demos/fluid-ascii.html',
   '/demos/red-thread': 'pages/demos/red-thread.html',
+  '/demos/ivy-climb': 'pages/demos/ivy-climb.html',
+  '/demos/ring': 'pages/demos/ring.html',
+  '/demos/kan': 'pages/demos/kan.html',
   '/demos/showcase': 'pages/demos/showcase.html',
   '/demos/bubbles': 'pages/demos/bubbles.html',
   '/demos/accordion': 'pages/demos/accordion.html',
@@ -128,8 +131,43 @@ Bun.serve({
     if (existsSync(filePath)) {
       const ext = extname(filePath)
       const mime = MIME[ext] ?? 'application/octet-stream'
-      return new Response(Bun.file(filePath), {
-        headers: { 'Content-Type': mime },
+      const file = Bun.file(filePath)
+      const size = file.size
+
+      // Honor HTTP Range requests so browsers can seek inside videos.
+      const rangeHeader = req.headers.get('range')
+      if (rangeHeader !== null) {
+        const m = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader)
+        if (m !== null) {
+          const startStr = m[1]
+          const endStr = m[2]
+          let start = startStr === '' ? 0 : parseInt(startStr, 10)
+          let end = endStr === '' ? size - 1 : parseInt(endStr, 10)
+          if (Number.isNaN(start) || Number.isNaN(end) || start < 0 || end >= size || start > end) {
+            return new Response(null, {
+              status: 416,
+              headers: { 'Content-Range': `bytes */${size}` },
+            })
+          }
+          const slice = file.slice(start, end + 1)
+          return new Response(slice, {
+            status: 206,
+            headers: {
+              'Content-Type': mime,
+              'Accept-Ranges': 'bytes',
+              'Content-Range': `bytes ${start}-${end}/${size}`,
+              'Content-Length': String(end - start + 1),
+            },
+          })
+        }
+      }
+
+      return new Response(file, {
+        headers: {
+          'Content-Type': mime,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': String(size),
+        },
       })
     }
 

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>環 Kan</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;width:100%;overflow:hidden;background:#000;color:#E8E4D8}
+    body{display:flex;align-items:center;justify-content:center;font-family:"Noto Sans JP",sans-serif}
+    #stage{position:relative;width:540px;height:960px;background:#000}
+    canvas{display:block;width:540px;height:960px;image-rendering:crisp-edges;user-select:none;-webkit-user-select:none;pointer-events:none}
+    @media (max-width:600px){
+      #stage{--sw:calc(100vw / 540);--sh:calc(100vh / 960);transform:scale(min(var(--sw),var(--sh)));transform-origin:center center}
+    }
+  </style>
+</head>
+<body>
+  <div id="stage"><canvas id="c" width="1080" height="1920"></canvas></div>
+  <script type="module" src="./kan.ts"></script>
+</body>
+</html>
