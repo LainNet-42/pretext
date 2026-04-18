@@ -5,7 +5,8 @@ const path = require('path')
 const OUT_DIR = path.join(__dirname, '..', 'tmp-snaps')
 if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true })
 
-const SNAP_TIMES_MS = [200, 800, 1800, 3200, 5000, 7500]
+// snap at key phase transitions
+const SNAP_TIMES_MS = [500, 2400, 3800, 5500, 7500, 9500, 11500, 13500, 15500, 17500]
 
 ;(async () => {
   const browser = await puppeteer.launch({
@@ -26,10 +27,10 @@ const SNAP_TIMES_MS = [200, 800, 1800, 3200, 5000, 7500]
     if (f.startsWith('kan-')) fs.unlinkSync(path.join(OUT_DIR, f))
   }
 
-  const t0 = Date.now()
+  // Use setTime hook to jump to each target phase (bypasses realtime)
   for (const target of SNAP_TIMES_MS) {
-    const wait = target - (Date.now() - t0)
-    if (wait > 0) await new Promise(r => setTimeout(r, wait))
+    await page.evaluate(ms => { window.__kan && window.__kan.setTime(ms / 1000) }, target)
+    await new Promise(r => setTimeout(r, 80))
     const fn = path.join(OUT_DIR, `kan-${String(target).padStart(5, '0')}.png`)
     await page.screenshot({ path: fn })
     console.log('wrote', fn)
