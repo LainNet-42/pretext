@@ -49,6 +49,7 @@ const routes: Record<string, string> = {
   '/demos/ring': 'pages/demos/ring.html',
   '/demos/kan': 'pages/demos/kan.html',
   '/demos/alien-beauty': 'pages/demos/alien-beauty.html',
+  '/demos/pixel-effect': 'pages/demos/pixel-effect.html',
   '/demos/showcase': 'pages/demos/showcase.html',
   '/demos/bubbles': 'pages/demos/bubbles.html',
   '/demos/accordion': 'pages/demos/accordion.html',

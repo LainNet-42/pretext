@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pixel effect</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0d0d0d;
+  --panel: #161616;
+  --border: #242424;
+  --text: #c0c0c0;
+  --muted: #555;
+  --accent: #48a8f0;
+  --label: #777;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* SIDEBAR */
+#sidebar {
+  width: 268px;
+  min-width: 268px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+#sidebar::-webkit-scrollbar { width: 3px; }
+#sidebar::-webkit-scrollbar-track { background: transparent; }
+#sidebar::-webkit-scrollbar-thumb { background: var(--border); }
+
+.sec {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.sec-label {
+  color: var(--label);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* Upload */
+#upload-zone {
+  border: 1px dashed var(--border);
+  padding: 20px 10px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--muted);
+  line-height: 1.8;
+  transition: border-color 0.15s, color 0.15s;
+  user-select: none;
+}
+#upload-zone:hover, #upload-zone.over { border-color: var(--accent); color: var(--accent); }
+#upload-zone small { font-size: 9px; color: var(--border); }
+#file-inp { display: none; }
+
+/* Param rows */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+.row:last-child { margin-bottom: 0; }
+.row-label { color: var(--label); width: 76px; flex-shrink: 0; }
+.row input[type=range] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  outline: none;
+  cursor: pointer;
+}
+.row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+.val { width: 26px; text-align: right; color: var(--text); font-size: 10px; }
+
+/* Presets */
+.presets { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 9px; }
+.pbtn {
+  padding: 3px 7px;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 9px;
+  cursor: pointer;
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: all 0.1s;
+}
+.pbtn:hover { border-color: var(--text); color: var(--text); }
+.pbtn.on { border-color: var(--accent); color: var(--accent); }
+
+/* Swatches */
+#swatches { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.sw {
+  width: 26px; height: 26px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.08);
+  position: relative;
+  transition: transform 0.1s;
+  flex-shrink: 0;
+}
+.sw:hover { transform: scale(1.12); }
+.sw input[type=color] {
+  position: absolute; inset: 0;
+  opacity: 0; cursor: pointer;
+  width: 100%; height: 100%;
+}
+.icon-btn {
+  width: 26px; height: 26px;
+  border-radius: 3px;
+  border: 1px dashed var(--border);
+  background: none;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 24px;
+  text-align: center;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.1s;
+}
+.icon-btn:hover { border-color: var(--text); color: var(--text); }
+
+/* Radio */
+.radios { display: flex; gap: 10px; }
+.ri {
+  display: flex; align-items: center; gap: 5px;
+  cursor: pointer; color: var(--muted);
+}
+.ri input { cursor: pointer; accent-color: var(--accent); }
+.ri:has(input:checked) { color: var(--text); }
+
+/* Toggle */
+.tog-row {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+.tog-row:last-child { margin-bottom: 0; }
+.tog { position: relative; width: 30px; height: 16px; }
+.tog input { opacity: 0; width: 0; height: 0; }
+.track {
+  position: absolute; inset: 0;
+  background: var(--border);
+  border-radius: 8px; cursor: pointer;
+  transition: background 0.2s;
+}
+.tog input:checked + .track { background: var(--accent); }
+.track::after {
+  content: '';
+  position: absolute;
+  width: 10px; height: 10px;
+  left: 3px; top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+.tog input:checked + .track::after { transform: translateX(14px); }
+
+/* Bottom buttons */
+.action-btn {
+  display: block;
+  margin: 10px 14px 0;
+  padding: 8px;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  width: calc(100% - 28px);
+  transition: all 0.15s;
+  border-radius: 2px;
+  text-align: center;
+}
+.action-btn:hover { border-color: var(--accent); color: var(--accent); }
+.action-btn:disabled { opacity: 0.25; pointer-events: none; }
+.action-btn:last-child { margin-bottom: 14px; }
+
+/* Video controls */
+#vid-ctl {
+  display: none;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  align-items: center;
+  gap: 8px;
+}
+#vid-ctl.show { display: flex; }
+#btn-pp {
+  padding: 3px 10px;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 9px;
+  cursor: pointer;
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+#btn-pp:hover { border-color: var(--text); color: var(--text); }
+#vtime { color: var(--muted); font-size: 10px; }
+
+/* MAIN */
+#main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background:
+    repeating-conic-gradient(#1a1a1a 0% 25%, #111 0% 50%) 0 0 / 20px 20px;
+}
+#hint {
+  position: absolute;
+  color: var(--muted);
+  text-align: center;
+  line-height: 2.2;
+  pointer-events: none;
+}
+#out {
+  max-width: 100%;
+  max-height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  display: none;
+}
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+
+  <div class="sec">
+    <div id="upload-zone">
+      <input type="file" id="file-inp" accept="image/*,video/*">
+      <div>drop / click to upload</div>
+      <small>jpg · png · gif · mp4 · webm</small>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Pixelate</div>
+    <div class="row">
+      <span class="row-label">block size</span>
+      <input type="range" id="sl-bs" min="2" max="64" value="8">
+      <span class="val" id="vv-bs">8</span>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Palette</div>
+    <div class="presets" id="presets"></div>
+    <div id="swatches"></div>
+    <div style="display:flex;gap:4px;align-items:center;margin-top:4px">
+      <span style="color:var(--label);font-size:9px;width:76px">colors</span>
+      <button class="icon-btn" id="btn-add" title="add">+</button>
+      <button class="icon-btn" id="btn-rm"  title="remove" style="font-size:18px">−</button>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Dither</div>
+    <div class="radios">
+      <label class="ri"><input type="radio" name="dth" value="none" checked> none</label>
+      <label class="ri"><input type="radio" name="dth" value="bayer"> bayer</label>
+      <label class="ri"><input type="radio" name="dth" value="floyd"> floyd</label>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Adjust</div>
+    <div class="row">
+      <span class="row-label">brightness</span>
+      <input type="range" id="sl-br" min="-100" max="100" value="0">
+      <span class="val" id="vv-br">0</span>
+    </div>
+    <div class="row">
+      <span class="row-label">contrast</span>
+      <input type="range" id="sl-co" min="-100" max="100" value="0">
+      <span class="val" id="vv-co">0</span>
+    </div>
+    <div class="row">
+      <span class="row-label">saturation</span>
+      <input type="range" id="sl-sa" min="-100" max="100" value="0">
+      <span class="val" id="vv-sa">0</span>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-label">Overlay</div>
+    <div class="tog-row">
+      <span style="color:var(--label)">pixel grid</span>
+      <label class="tog"><input type="checkbox" id="cb-grid"><div class="track"></div></label>
+    </div>
+    <div class="row" style="margin-bottom:0">
+      <span class="row-label">grid opacity</span>
+      <input type="range" id="sl-go" min="0" max="100" value="30">
+      <span class="val" id="vv-go">30</span>
+    </div>
+  </div>
+
+  <button class="action-btn" id="btn-dl" disabled>download png</button>
+
+  <div id="vid-ctl">
+    <button id="btn-pp">play</button>
+    <span id="vtime">0:00</span>
+  </div>
+
+</div>
+
+<div id="main">
+  <div id="hint">drop an image or video<br><small style="font-size:9px;color:#333">or click the upload zone</small></div>
+  <canvas id="out"></canvas>
+</div>
+
+<canvas id="tmp" style="display:none"></canvas>
+<video id="vid" style="display:none" playsinline crossorigin="anonymous"></video>
+
+<script>
+// ── PALETTES ────────────────────────────────────────────────────────────────
+const P = {
+  paper:   { l:'paper',   c:['#1e1a14','#d4c99a'] },
+  gb:      { l:'game boy',c:['#0f380f','#306230','#8bac0f','#9bbc0f'] },
+  pocket:  { l:'pocket',  c:['#1a1a1a','#555555','#aaaaaa','#e8e8e8'] },
+  sepia:   { l:'sepia',   c:['#1c0a00','#6b3a1f','#b8723a','#e8c87a'] },
+  night:   { l:'night',   c:['#001a00','#003300','#007744','#00cc88'] },
+  cga:     { l:'cga',     c:['#000000','#ff55ff','#55ffff','#ffffff'] },
+  vhs:     { l:'vhs',     c:['#0d0020','#5511aa','#cc22dd','#ff88ff'] },
+  mono:    { l:'mono',    c:['#000000','#ffffff'] },
+}
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+const S = {
+  src: null,
+  isVideo: false,
+  blockSize: 8,
+  palette: P.paper.c.slice(),
+  preset: 'paper',
+  dither: 'none',
+  brightness: 0,
+  contrast: 0,
+  saturation: 0,
+  grid: false,
+  gridOpacity: 0.3,
+}
+
+// ── CANVAS REFS ──────────────────────────────────────────────────────────────
+const out  = document.getElementById('out')
+const tmp  = document.getElementById('tmp')
+const vid  = document.getElementById('vid')
+const octx = out.getContext('2d')
+const tctx = tmp.getContext('2d')
+
+// Bayer 4x4
+const BAYER = [0,8,2,10, 12,4,14,6, 3,11,1,9, 15,7,13,5].map(v => (v - 7.5) / 16)
+
+function hexRgb(h) {
+  const n = parseInt(h.slice(1), 16)
+  return [(n>>16)&255, (n>>8)&255, n&255]
+}
+
+function nearest(r, g, b, pal) {
+  let best = 0, bestD = Infinity
+  for (let i = 0; i < pal.length; i++) {
+    const d = (r-pal[i][0])**2 + (g-pal[i][1])**2 + (b-pal[i][2])**2
+    if (d < bestD) { bestD = d; best = i }
+  }
+  return best
+}
+
+function adjust(r, g, b) {
+  const sat = S.saturation / 100
+  if (sat !== 0) {
+    const lum = 0.299*r + 0.587*g + 0.114*b
+    r += (r - lum) * sat
+    g += (g - lum) * sat
+    b += (b - lum) * sat
+  }
+  const br = S.brightness * 2.55
+  r += br; g += br; b += br
+  const cf = S.contrast / 100 + 1
+  r = (r - 128) * cf + 128
+  g = (g - 128) * cf + 128
+  b = (b - 128) * cf + 128
+  return [
+    Math.max(0, Math.min(255, r)) | 0,
+    Math.max(0, Math.min(255, g)) | 0,
+    Math.max(0, Math.min(255, b)) | 0,
+  ]
+}
+
+function render() {
+  const src = S.src
+  if (!src) return
+
+  const sw = src instanceof HTMLVideoElement ? src.videoWidth  : src.width
+  const sh = src instanceof HTMLVideoElement ? src.videoHeight : src.height
+  if (!sw || !sh) return
+
+  const bs  = S.blockSize
+  const pw  = Math.ceil(sw / bs)
+  const ph  = Math.ceil(sh / bs)
+
+  // Downsample source -> pw x ph (browser averaging)
+  tmp.width = pw; tmp.height = ph
+  tctx.imageSmoothingEnabled = true
+  tctx.drawImage(src, 0, 0, pw, ph)
+  const raw = tctx.getImageData(0, 0, pw, ph).data
+
+  const pal = S.palette.map(hexRgb)
+  const N   = pw * ph
+
+  // Float work buffer (for FS error diffusion)
+  const buf = new Float32Array(N * 3)
+  for (let i = 0; i < N; i++) {
+    const [r, g, b] = adjust(raw[i*4], raw[i*4+1], raw[i*4+2])
+    buf[i*3] = r; buf[i*3+1] = g; buf[i*3+2] = b
+  }
+
+  // Quantize
+  const res = new Uint8Array(N * 3)
+
+  if (S.dither === 'floyd') {
+    for (let y = 0; y < ph; y++) {
+      for (let x = 0; x < pw; x++) {
+        const i = y * pw + x
+        const r = Math.max(0, Math.min(255, buf[i*3]))
+        const g = Math.max(0, Math.min(255, buf[i*3+1]))
+        const b = Math.max(0, Math.min(255, buf[i*3+2]))
+        const ci = nearest(r, g, b, pal)
+        res[i*3] = pal[ci][0]; res[i*3+1] = pal[ci][1]; res[i*3+2] = pal[ci][2]
+        const er = r - pal[ci][0], eg = g - pal[ci][1], eb = b - pal[ci][2]
+        const spread = (nx, ny, f) => {
+          if (nx >= 0 && nx < pw && ny < ph) {
+            const j = ny * pw + nx
+            buf[j*3] += er*f; buf[j*3+1] += eg*f; buf[j*3+2] += eb*f
+          }
+        }
+        spread(x+1, y,   7/16)
+        spread(x-1, y+1, 3/16)
+        spread(x,   y+1, 5/16)
+        spread(x+1, y+1, 1/16)
+      }
+    }
+  } else if (S.dither === 'bayer') {
+    const spread = 55
+    for (let i = 0; i < N; i++) {
+      const x = i % pw, y = (i / pw) | 0
+      const t = BAYER[(y % 4) * 4 + (x % 4)] * spread
+      const r = Math.max(0, Math.min(255, buf[i*3]   + t))
+      const g = Math.max(0, Math.min(255, buf[i*3+1] + t))
+      const b = Math.max(0, Math.min(255, buf[i*3+2] + t))
+      const ci = nearest(r, g, b, pal)
+      res[i*3] = pal[ci][0]; res[i*3+1] = pal[ci][1]; res[i*3+2] = pal[ci][2]
+    }
+  } else {
+    for (let i = 0; i < N; i++) {
+      const r = Math.max(0, Math.min(255, buf[i*3]))   | 0
+      const g = Math.max(0, Math.min(255, buf[i*3+1])) | 0
+      const b = Math.max(0, Math.min(255, buf[i*3+2])) | 0
+      const ci = nearest(r, g, b, pal)
+      res[i*3] = pal[ci][0]; res[i*3+1] = pal[ci][1]; res[i*3+2] = pal[ci][2]
+    }
+  }
+
+  // Write result to tmp at block-grid size
+  const outImg = tctx.createImageData(pw, ph)
+  for (let i = 0; i < N; i++) {
+    outImg.data[i*4]   = res[i*3]
+    outImg.data[i*4+1] = res[i*3+1]
+    outImg.data[i*4+2] = res[i*3+2]
+    outImg.data[i*4+3] = 255
+  }
+  tctx.putImageData(outImg, 0, 0)
+
+  // Scale up to full res (nearest-neighbor)
+  out.width = sw; out.height = sh
+  octx.imageSmoothingEnabled = false
+  octx.drawImage(tmp, 0, 0, sw, sh)
+
+  // Grid overlay
+  if (S.grid) {
+    octx.strokeStyle = `rgba(0,0,0,${S.gridOpacity})`
+    octx.lineWidth = 1
+    octx.beginPath()
+    for (let x = 1; x < pw; x++) { octx.moveTo(x*bs, 0); octx.lineTo(x*bs, sh) }
+    for (let y = 1; y < ph; y++) { octx.moveTo(0, y*bs); octx.lineTo(sw, y*bs) }
+    octx.stroke()
+  }
+
+  out.style.display = 'block'
+  document.getElementById('hint').style.display = 'none'
+}
+
+// ── VIDEO LOOP ───────────────────────────────────────────────────────────────
+let rafId = 0
+function videoLoop() {
+  if (!vid.paused && !vid.ended) {
+    S.src = vid; render()
+    rafId = requestAnimationFrame(videoLoop)
+  }
+}
+vid.addEventListener('play', () => { cancelAnimationFrame(rafId); rafId = requestAnimationFrame(videoLoop) })
+vid.addEventListener('pause', () => { cancelAnimationFrame(rafId); S.src = vid; render() })
+vid.addEventListener('seeked', () => { if (vid.paused) { S.src = vid; render() } })
+vid.addEventListener('timeupdate', () => {
+  const t = vid.currentTime
+  document.getElementById('vtime').textContent =
+    `${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`
+})
+
+// ── LOAD FILE ────────────────────────────────────────────────────────────────
+async function loadFile(file) {
+  const isVid = file.type.startsWith('video/')
+  S.isVideo = isVid
+  const vidCtl = document.getElementById('vid-ctl')
+  if (isVid) {
+    vid.src = URL.createObjectURL(file)
+    vid.load()
+    S.src = vid
+    vidCtl.classList.add('show')
+    vid.addEventListener('loadeddata', () => render(), { once: true })
+  } else {
+    cancelAnimationFrame(rafId)
+    vidCtl.classList.remove('show')
+    S.src = await createImageBitmap(file)
+    render()
+  }
+  document.getElementById('btn-dl').disabled = false
+}
+
+// Upload zone
+const zone = document.getElementById('upload-zone')
+const finp = document.getElementById('file-inp')
+zone.addEventListener('click', () => finp.click())
+finp.addEventListener('change', e => e.target.files[0] && loadFile(e.target.files[0]))
+
+// Drag & drop on main
+const main = document.getElementById('main')
+main.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('over') })
+main.addEventListener('dragleave', ()  => zone.classList.remove('over'))
+main.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('over')
+  const f = e.dataTransfer.files[0]; if (f) loadFile(f)
+})
+
+// Paste
+document.addEventListener('paste', e => {
+  const f = e.clipboardData?.files[0]; if (f) loadFile(f)
+})
+
+// ── VIDEO PLAY/PAUSE ─────────────────────────────────────────────────────────
+document.getElementById('btn-pp').addEventListener('click', () => {
+  const btn = document.getElementById('btn-pp')
+  if (vid.paused) { vid.play(); btn.textContent = 'pause' }
+  else            { vid.pause(); btn.textContent = 'play'  }
+})
+
+// ── SLIDERS ──────────────────────────────────────────────────────────────────
+const sliders = [
+  ['sl-bs', 'vv-bs', 'blockSize',   v => v],
+  ['sl-br', 'vv-br', 'brightness',  v => v],
+  ['sl-co', 'vv-co', 'contrast',    v => v],
+  ['sl-sa', 'vv-sa', 'saturation',  v => v],
+  ['sl-go', 'vv-go', 'gridOpacity', v => v / 100],
+]
+sliders.forEach(([id, vid2, key, xf]) => {
+  const sl = document.getElementById(id)
+  const vl = document.getElementById(vid2)
+  sl.addEventListener('input', () => {
+    vl.textContent = sl.value
+    S[key] = xf(+sl.value)
+    render()
+  })
+})
+
+// Grid toggle
+document.getElementById('cb-grid').addEventListener('change', e => { S.grid = e.target.checked; render() })
+
+// Dither radio
+document.querySelectorAll('input[name=dth]').forEach(r => {
+  r.addEventListener('change', () => { S.dither = r.value; render() })
+})
+
+// ── PALETTE UI ───────────────────────────────────────────────────────────────
+function buildSwatches() {
+  const row = document.getElementById('swatches')
+  row.innerHTML = ''
+  S.palette.forEach((col, i) => {
+    const div = document.createElement('div')
+    div.className = 'sw'
+    div.style.background = col
+    const inp = document.createElement('input')
+    inp.type = 'color'; inp.value = col
+    inp.addEventListener('input', () => {
+      S.palette[i] = inp.value
+      div.style.background = inp.value
+      S.preset = null
+      refreshPresets()
+      render()
+    })
+    div.appendChild(inp)
+    row.appendChild(div)
+  })
+}
+
+document.getElementById('btn-add').addEventListener('click', () => {
+  if (S.palette.length >= 16) return
+  S.palette.push('#888888')
+  S.preset = null; refreshPresets(); buildSwatches(); render()
+})
+document.getElementById('btn-rm').addEventListener('click', () => {
+  if (S.palette.length <= 2) return
+  S.palette.pop()
+  S.preset = null; refreshPresets(); buildSwatches(); render()
+})
+
+// ── PRESET BUTTONS ────────────────────────────────────────────────────────────
+function refreshPresets() {
+  document.querySelectorAll('.pbtn').forEach(b =>
+    b.classList.toggle('on', b.dataset.k === S.preset))
+}
+
+const presetsEl = document.getElementById('presets')
+Object.entries(P).forEach(([k, p]) => {
+  const b = document.createElement('button')
+  b.className = 'pbtn' + (k === S.preset ? ' on' : '')
+  b.dataset.k = k; b.textContent = p.l
+  b.addEventListener('click', () => {
+    S.palette = p.c.slice(); S.preset = k
+    refreshPresets(); buildSwatches(); render()
+  })
+  presetsEl.appendChild(b)
+})
+
+// ── DOWNLOAD ──────────────────────────────────────────────────────────────────
+document.getElementById('btn-dl').addEventListener('click', () => {
+  const a = document.createElement('a')
+  a.download = 'pixel-effect.png'
+  a.href = out.toDataURL('image/png')
+  a.click()
+})
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+buildSwatches()
+</script>
+</body>
+</html>
